@@ -1,0 +1,57 @@
+name: borrowly
+description: "A hyper-local peer-to-peer item sharing marketplace."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: '>=3.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  
+  # Backend & Supabase Auth
+  supabase_flutter: ^2.3.0
+  google_sign_in: ^6.2.1
+  
+  # Image Picker
+  image_picker: ^1.0.7
+
+  # State Management & DI
+  flutter_riverpod: ^2.4.9
+  hooks_riverpod: ^2.4.9
+  flutter_hooks: ^0.20.5
+
+  # Navigation
+  go_router: ^13.0.0
+
+  # Local Storage
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+
+  # Data Class Helpers & Serialization
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  equatable: ^2.0.5
+
+  # Design & UI
+  google_fonts: ^6.1.0
+  cached_network_image: ^3.3.1
+  flutter_svg: ^2.0.9
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.8
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  hive_generator: ^2.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

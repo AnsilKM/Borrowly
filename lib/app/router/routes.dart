@@ -1,0 +1,15 @@
+abstract class AppRoutes {
+  static const String splash = '/splash';
+  static const String home = '/';
+  static const String search = '/search';
+  static const String activity = '/activity';
+  static const String profile = '/profile';
+  static const String designSystem = '/design-system';
+  static const String login = '/login';
+  static const String profileSetup = '/profile-setup';
+  static const String addItem = '/add-item';
+  static const String itemDetails = '/item/:id';
+  static const String chatList = '/chat-list';
+  static const String chat = '/chat/:id';
+  static const String notifications = '/notifications';
+}
