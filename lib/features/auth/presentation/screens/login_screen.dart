@@ -8,6 +8,7 @@ import '../../../../app/theme/app_typography.dart';
 import '../../../../core/widgets/borrowly_badge.dart';
 import '../../../../core/widgets/borrowly_button.dart';
 import '../../../../core/widgets/borrowly_card.dart';
+import '../../../../core/widgets/borrowly_toast.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerWidget {
@@ -130,9 +131,18 @@ class LoginScreen extends ConsumerWidget {
                   isFullWidth: true,
                   icon: const Icon(Icons.g_mobiledata, size: 26),
                   onPressed: () async {
-                    await authController.signInWithGoogle();
-                    if (context.mounted) {
-                      context.push(AppRoutes.profileSetup);
+                    try {
+                      await authController.signInWithGoogle();
+                      if (context.mounted && ref.read(authProvider).isAuthenticated) {
+                        context.go(AppRoutes.profileSetup);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        final msg = e.toString().replaceAll('Exception: ', '');
+                        if (!msg.contains('cancelled')) {
+                          BorrowlyToast.show(context, msg, isError: true);
+                        }
+                      }
                     }
                   },
                 ),

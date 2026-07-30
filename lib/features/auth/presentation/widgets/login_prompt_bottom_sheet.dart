@@ -6,6 +6,7 @@ import 'package:borrowly/app/theme/app_colors.dart';
 import 'package:borrowly/app/theme/app_spacing.dart';
 import 'package:borrowly/app/theme/app_typography.dart';
 import 'package:borrowly/core/widgets/borrowly_button.dart';
+import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import '../providers/auth_provider.dart';
 
 class LoginPromptBottomSheet extends ConsumerWidget {
@@ -98,10 +99,19 @@ class LoginPromptBottomSheet extends ConsumerWidget {
                 isLoading: authState.status == AuthStatus.loading,
                 icon: const Icon(Icons.g_mobiledata, size: 28, color: AppColors.textPrimary),
                 onPressed: () async {
-                  await authController.signInWithGoogle();
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                    context.push(AppRoutes.profileSetup);
+                  try {
+                    await authController.signInWithGoogle();
+                    if (context.mounted && ref.read(authProvider).isAuthenticated) {
+                      Navigator.of(context).pop();
+                      context.push(AppRoutes.profileSetup);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      final msg = e.toString().replaceAll('Exception: ', '');
+                      if (!msg.contains('cancelled')) {
+                        BorrowlyToast.show(context, msg, isError: true);
+                      }
+                    }
                   }
                 },
               ),
