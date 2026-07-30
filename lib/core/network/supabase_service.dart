@@ -2,8 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
-  static const String defaultUrl = 'https://borrowly-supabase-project.supabase.co';
-  static const String defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.borrowly_anon_token';
+  static const String defaultUrl = 'https://wjgvdryrtgajenlcbjfy.supabase.co';
+  static const String defaultAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqZ3ZkcnlydGdhamVubGNiamZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzOTk2MDYsImV4cCI6MjEwMDk3NTYwNn0.OQQfNd6Xy-BLg_vMRD6Ip0rUTA3AF54OOwR5lncept4';
 
   static bool _isInitialized = false;
 
