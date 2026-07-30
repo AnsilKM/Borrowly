@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
+import 'core/network/supabase_service.dart';
 import 'core/storage/local_storage_service.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase Backend
+  await SupabaseService.init();
 
   // Set system bar styling non-blockingly before rendering first frame
   SystemChrome.setSystemUIOverlayStyle(

@@ -25,11 +25,12 @@ class SupabaseService {
   }
 
   static SupabaseClient? get client {
-    if (_isInitialized) {
+    try {
       return Supabase.instance.client;
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
-  static bool get isConfigured => _isInitialized && client != null;
+  static bool get isConfigured => client != null;
 }
