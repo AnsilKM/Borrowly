@@ -71,9 +71,31 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.splash,
     redirect: (context, state) {
       final uri = state.uri;
+      final scheme = uri.scheme;
+      final host = uri.host;
       final path = uri.path;
 
-      // Handle query parameters: ?item=123 or ?owner=456
+      // 1. Handle custom scheme: borrowly://item/<id> or borrowly://owner/<id>
+      if (scheme == 'borrowly') {
+        if (host == 'item') {
+          final id = path.replaceAll('/', '');
+          if (id.isNotEmpty) {
+            return '/item/$id';
+          }
+        } else if (host == 'owner') {
+          final id = path.replaceAll('/', '');
+          if (id.isNotEmpty) {
+            return '/owner/$id';
+          }
+        }
+      }
+
+      // 2. Already on target routes
+      if (path.startsWith('/item/') || path.startsWith('/owner/')) {
+        return null;
+      }
+
+      // 3. Handle query parameters: ?item=123 or ?owner=456
       final itemParam = uri.queryParameters['item'];
       if (itemParam != null && itemParam.isNotEmpty) {
         final targetPath = '/item/$itemParam';
