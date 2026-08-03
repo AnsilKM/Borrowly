@@ -4,6 +4,12 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Borrowly needs access to your photo library to let you upload item photos for local borrowing.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Borrowly needs access to your camera to take pictures of items you want to lend.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Borrowly needs your location to find nearby items shared by neighbors within 5 km.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

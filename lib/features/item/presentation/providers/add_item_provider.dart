@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/item_category.dart';
 import '../../domain/entities/item_entity.dart';
 import '../../domain/usecases/add_item_usecase.dart';
@@ -84,6 +86,10 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
   void setDailyPrice(double price) => state = state.copyWith(dailyPrice: price);
   void setDepositAmount(double deposit) => state = state.copyWith(depositAmount: deposit);
 
+  void reset() {
+    state = const AddItemFormState();
+  }
+
   Future<bool> submitListing({
     required String ownerId,
     required String ownerName,
@@ -101,9 +107,9 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
 
     state = state.copyWith(isLoading: true, errorMessage: null);
 
-    final defaultImage = state.imagePaths.isNotEmpty
-        ? state.imagePaths.first
-        : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600';
+    final itemImages = state.imagePaths.isNotEmpty
+        ? state.imagePaths
+        : ['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600'];
 
     final newItem = ItemEntity(
       id: 'item_${DateTime.now().millisecondsSinceEpoch}',
@@ -113,7 +119,7 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
       dailyPrice: state.isFree ? 0.0 : state.dailyPrice,
       isFree: state.isFree,
       depositAmount: state.depositAmount,
-      images: [defaultImage],
+      images: itemImages,
       ownerId: ownerId,
       ownerName: ownerName,
       ownerAvatar: ownerAvatar,
@@ -123,15 +129,25 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
       createdAt: DateTime.now(),
     );
 
+    BorrowlyLogger.event('Submitting Item Listing', parameters: {
+      'title': newItem.title,
+      'category': newItem.category.name,
+      'ownerId': ownerId,
+    });
+
     final result = await _addItemUseCase(newItem);
 
     return result.fold(
       onSuccess: (_) {
-        state = state.copyWith(isLoading: false, isSuccess: true);
+        BorrowlyLogger.info('Item listing created successfully!');
+        state = const AddItemFormState();
         return true;
       },
       onError: (failure) {
-        state = state.copyWith(isLoading: false, errorMessage: failure.message);
+        final errorMsg = 'Backend Error: ${failure.message}';
+        BorrowlyLogger.error(errorMsg, Exception(failure.message), null);
+        debugPrint('❌ [ITEM LISTING LOGCAT ERROR]: $errorMsg');
+        state = state.copyWith(isLoading: false, errorMessage: errorMsg);
         return false;
       },
     );

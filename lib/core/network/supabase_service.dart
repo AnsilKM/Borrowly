@@ -14,7 +14,11 @@ class SupabaseService {
     try {
       await Supabase.initialize(
         url: defaultUrl,
+        // ignore: deprecated_member_use
         anonKey: defaultAnonKey,
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+        ),
         debug: kDebugMode,
       );
       _isInitialized = true;

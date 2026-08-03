@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
-import 'mock_notification_repository.dart';
 
 class SupabaseNotificationRepository implements NotificationRepository {
-  final MockNotificationRepository _fallbackMockRepo = MockNotificationRepository();
-
   NotificationEntity _mapRowToEntity(Map<String, dynamic> row) {
     final typeStr = row['type'] as String? ?? 'system';
     final type = NotificationType.values.firstWhere(
@@ -27,6 +24,11 @@ class SupabaseNotificationRepository implements NotificationRepository {
 
   @override
   Future<List<NotificationEntity>> getNotifications(String userId) async {
+    BorrowlyLogger.event('Notification: Fetch Notifications', parameters: {'userId': userId});
+    if (userId == 'guest_user_id' || userId.length != 36 || !userId.contains('-')) {
+      return [];
+    }
+
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -39,40 +41,36 @@ class SupabaseNotificationRepository implements NotificationRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapRowToEntity(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        debugPrint('Supabase getNotifications fallback to local: $e');
+        BorrowlyLogger.warning('getNotifications error: $e');
       }
     }
 
-    return _fallbackMockRepo.getNotifications(userId);
+    return [];
   }
 
   @override
   Future<void> markAsRead(String notificationId) async {
+    BorrowlyLogger.event('Notification: Mark As Read', parameters: {'notificationId': notificationId});
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
         await client.from('notifications').update({'is_read': true}).eq('id', notificationId);
-        return;
       } catch (e) {
-        debugPrint('Supabase markAsRead fallback to local: $e');
+        BorrowlyLogger.warning('markAsRead error: $e');
       }
     }
-
-    return _fallbackMockRepo.markAsRead(notificationId);
   }
 
   @override
   Future<void> markAllAsRead(String userId) async {
+    BorrowlyLogger.event('Notification: Mark All As Read', parameters: {'userId': userId});
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
         await client.from('notifications').update({'is_read': true}).eq('user_id', userId);
-        return;
       } catch (e) {
-        debugPrint('Supabase markAllAsRead fallback to local: $e');
+        BorrowlyLogger.warning('markAllAsRead error: $e');
       }
     }
-
-    return _fallbackMockRepo.markAllAsRead(userId);
   }
 }

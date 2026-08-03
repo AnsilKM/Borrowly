@@ -13,6 +13,8 @@ import '../../../core/widgets/borrowly_card.dart';
 import '../../../core/widgets/borrowly_empty_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../../item/presentation/providers/home_items_provider.dart';
+import '../../item/presentation/providers/wishlist_provider.dart';
+import '../../item/presentation/widgets/category_selection_bottom_sheet.dart';
 import '../../item/presentation/widgets/category_selector.dart';
 import '../../item/presentation/widgets/home_search_bar.dart';
 import '../../item/presentation/widgets/item_card.dart';
@@ -33,9 +35,11 @@ class HomeScreen extends ConsumerWidget {
     final freeItemsAsync = ref.watch(freeItemsProvider);
     final recentlyAddedAsync = ref.watch(recentlyAddedItemsProvider);
 
-    final userName = (user != null && user.fullName.isNotEmpty && !user.isGuest) 
-        ? user.fullName.split(' ').first 
-        : 'Guest';
+    final userName = (user != null && user.fullName.isNotEmpty && !user.isGuest)
+        ? user.fullName.split(' ').first
+        : 'Neighbor';
+
+    final distanceOptions = [1, 3, 5, 10, 15];
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
@@ -51,18 +55,19 @@ class HomeScreen extends ConsumerWidget {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // Header Section showing User greeting and Location details
+              // 1. Sleek Glass Header Bar (Greeting & Quick Shortcuts)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.only(
                     left: AppSpacing.lg,
                     right: AppSpacing.lg,
-                    top: topPadding > 0 ? topPadding + AppSpacing.md : AppSpacing.xl,
-                    bottom: AppSpacing.sm,
+                    top: topPadding > 0 ? topPadding + AppSpacing.sm : AppSpacing.lg,
+                    bottom: AppSpacing.xs,
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      // User Greeting & Location
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,30 +75,36 @@ class HomeScreen extends ConsumerWidget {
                             Row(
                               children: [
                                 Text(
-                                  'Hi, $userName',
+                                  'Hello, $userName',
                                   style: AppTypography.displayLarge(isDark).copyWith(
-                                    fontSize: 26,
+                                    fontSize: 24,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                const Text('👋', style: TextStyle(fontSize: 22)),
+                                const SizedBox(width: 4),
+                                const Text('👋', style: TextStyle(fontSize: 20)),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(
-                                  Icons.location_on_rounded,
-                                  size: 15,
-                                  color: AppColors.primary,
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.near_me_rounded,
+                                    size: 12,
+                                    color: AppColors.primary,
+                                  ),
                                 ),
-                                const SizedBox(width: 4),
+                                const SizedBox(width: 6),
                                 Text(
-                                  'Oakwood Drive • Within $selectedRadius km',
-                                  style: AppTypography.bodyMedium(isDark).copyWith(
+                                  'Oakwood Drive • $selectedRadius km radius',
+                                  style: AppTypography.bodySmall(isDark).copyWith(
                                     color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -102,45 +113,195 @@ class HomeScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      if (authState.isGuest)
-                        BorrowlyButton(
-                          label: 'Sign In',
-                          size: BorrowlyButtonSize.small,
-                          variant: BorrowlyButtonVariant.outline,
-                          onPressed: () => context.push(AppRoutes.login),
-                        )
-                      else
-                        GestureDetector(
-                          onTap: () => context.go(AppRoutes.profile),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary, width: 2),
-                              boxShadow: AppShadows.subtle,
-                            ),
-                            child: CircleAvatar(
-                              radius: 22,
-                              backgroundColor: AppColors.surfaceWarm,
-                              backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-                              child: user?.avatarUrl == null
-                                  ? Text(
-                                      userName[0].toUpperCase(),
-                                      style: TextStyle(
-                                        color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+
+                      // Actions: Wishlist Heart & User Avatar
+                      Row(
+                        children: [
+                          Consumer(
+                            builder: (context, ref, child) {
+                              final wishlistedCount = ref.watch(wishlistIdsProvider).length;
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.darkSurface : AppColors.surfaceWarm,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: wishlistedCount > 0
+                                            ? AppColors.danger.withValues(alpha: 0.4)
+                                            : Colors.transparent,
+                                        width: 1.5,
                                       ),
-                                    )
-                                  : null,
-                            ),
+                                    ),
+                                    child: IconButton(
+                                      icon: Icon(
+                                        wishlistedCount > 0 ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                        color: wishlistedCount > 0
+                                            ? AppColors.danger
+                                            : (isDark ? Colors.white70 : AppColors.textSecondary),
+                                        size: 22,
+                                      ),
+                                      onPressed: () => context.push(AppRoutes.wishlist),
+                                    ),
+                                  ),
+                                  if (wishlistedCount > 0)
+                                    Positioned(
+                                      top: -2,
+                                      right: -2,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.danger,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 18,
+                                          minHeight: 18,
+                                        ),
+                                        child: Text(
+                                          '$wishlistedCount',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
                           ),
-                        ),
+                          const SizedBox(width: AppSpacing.xs + 2),
+
+                          if (authState.isGuest)
+                            BorrowlyButton(
+                              label: 'Sign In',
+                              size: BorrowlyButtonSize.small,
+                              variant: BorrowlyButtonVariant.outline,
+                              onPressed: () => context.push(AppRoutes.login),
+                            )
+                          else
+                            GestureDetector(
+                              onTap: () => context.go(AppRoutes.profile),
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppColors.primary, width: 2),
+                                      boxShadow: AppShadows.subtle,
+                                    ),
+                                    child: CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: AppColors.surfaceWarm,
+                                      backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
+                                      child: user?.avatarUrl == null
+                                          ? Text(
+                                              userName[0].toUpperCase(),
+                                              style: TextStyle(
+                                                color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      width: 11,
+                                      height: 11,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.success,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Colors.white, width: 1.5),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
 
-              // Master Design Search Bar
+              // 2. Interactive Radius Distance Filter Banner
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xs),
+                  child: BorrowlyCard(
+                    variant: BorrowlyCardVariant.warm,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.radar_rounded,
+                          color: AppColors.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: AppSpacing.xs + 2),
+                        Text(
+                          'Distance Radius:',
+                          style: AppTypography.labelText(isDark).copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: distanceOptions.map((km) {
+                                final isSelected = selectedRadius == km;
+                                return GestureDetector(
+                                  onTap: () {
+                                    ref.read(selectedRadiusProvider.notifier).state = km;
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white),
+                                      borderRadius: AppRadii.borderPill,
+                                      border: Border.all(
+                                        color: isSelected ? AppColors.primary : AppColors.border,
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${km}km',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // 3. Master Design Search Bar
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -148,7 +309,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Categories Header Row
+              // 4. Categories Section Header
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(
@@ -168,7 +329,7 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => context.push(AppRoutes.search),
+                        onTap: () => CategorySelectionBottomSheet.show(context),
                         child: Text(
                           'View all',
                           style: AppTypography.bodySmall(isDark).copyWith(
@@ -182,7 +343,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Category Selector Chips
+              // 5. Horizontal Category Selector Chips
               const SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
@@ -190,7 +351,59 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Section: Nearby for you (Asymmetrical Cards with Price & Distance)
+              // 6. Section: Free Shares Carousel (Zero-Cost Neighbor Loans)
+              freeItemsAsync.when(
+                data: (freeItems) {
+                  if (freeItems.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+                  return SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: AppSpacing.md),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                          child: Row(
+                            children: [
+                              Text(
+                                'Free Community Loans',
+                                style: AppTypography.headingMedium(isDark).copyWith(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              const BorrowlyBadge(
+                                label: 'FREE 🎁',
+                                variant: BorrowlyBadgeVariant.success,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.xs + 2),
+                        SizedBox(
+                          height: 245,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                            itemCount: freeItems.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
+                            itemBuilder: (context, index) {
+                              return SizedBox(
+                                width: 175,
+                                child: ItemCard(item: freeItems[index]),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+              ),
+
+              // 7. Section: Nearby Available Items Grid Header
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.only(
@@ -203,7 +416,7 @@ class HomeScreen extends ConsumerWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Nearby for you',
+                        'Nearby Items',
                         style: AppTypography.headingMedium(isDark).copyWith(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -219,6 +432,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
+              // 8. Nearby Items Grid View
               nearbyItemsAsync.when(
                 data: (items) {
                   if (items.isEmpty) {
@@ -297,59 +511,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Section: Free Shares Row (Horizontal Scroll)
-              freeItemsAsync.when(
-                data: (freeItems) {
-                  if (freeItems.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
-                  return SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: AppSpacing.md),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                          child: Row(
-                            children: [
-                              Text(
-                                'Free Shares Nearby',
-                                style: AppTypography.headingMedium(isDark).copyWith(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              const BorrowlyBadge(
-                                label: 'FREE',
-                                variant: BorrowlyBadgeVariant.success,
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs + 2),
-                        SizedBox(
-                          height: 245,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                            itemCount: freeItems.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.md),
-                            itemBuilder: (context, index) {
-                              return SizedBox(
-                                width: 175,
-                                child: ItemCard(item: freeItems[index]),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              ),
-
-              // Section: Recently Added
+              // 9. Section: Recently Added Items Carousel
               recentlyAddedAsync.when(
                 data: (recentItems) {
                   if (recentItems.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
@@ -364,7 +526,7 @@ class HomeScreen extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                'Recently added',
+                                'Recently Added',
                                 style: AppTypography.headingMedium(isDark).copyWith(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,

@@ -13,9 +13,11 @@ import 'package:borrowly/features/item/presentation/screens/add_item_screen.dart
 import 'package:borrowly/features/item/presentation/screens/item_details_screen.dart';
 import 'package:borrowly/features/main_shell/presentation/main_shell_screen.dart';
 import 'package:borrowly/features/notification/presentation/screens/notification_screen.dart';
+import 'package:borrowly/features/profile/presentation/owner_profile_screen.dart';
 import 'package:borrowly/features/profile/presentation/profile_screen.dart';
 import 'package:borrowly/features/search/presentation/search_screen.dart';
 import 'package:borrowly/features/splash/presentation/splash_screen.dart';
+import 'package:borrowly/features/wishlist/presentation/screens/wishlist_screen.dart';
 import 'routes.dart';
 
 
@@ -126,6 +128,33 @@ final routerProvider = Provider<GoRouter>((ref) {
             context: context,
             state: state,
             child: ChatScreen(conversationId: id, participantName: title, itemTitle: item),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.wishlist,
+        pageBuilder: (context, state) => _buildSlideTransitionPage(
+          context: context,
+          state: state,
+          child: const WishlistScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/owner/:id',
+        pageBuilder: (context, state) {
+          final id = state.pathParameters['id'] ?? '';
+          final name = state.uri.queryParameters['name'] ?? 'Neighbor Owner';
+          final avatar = state.uri.queryParameters['avatar'];
+          final item = state.uri.queryParameters['item'];
+          return _buildSlideTransitionPage(
+            context: context,
+            state: state,
+            child: OwnerProfileScreen(
+              ownerId: id,
+              ownerName: name,
+              ownerAvatar: avatar,
+              itemTitle: item,
+            ),
           );
         },
       ),

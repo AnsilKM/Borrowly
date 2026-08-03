@@ -9,7 +9,8 @@ enum ItemCategory {
   sports('Sports & Fitness', Icons.sports_tennis_outlined),
   party('Party & Event', Icons.celebration_outlined),
   homeAppliance('Home & Kitchen', Icons.kitchen_outlined),
-  books('Books & Games', Icons.style_outlined);
+  books('Books & Games', Icons.style_outlined),
+  other('Other', Icons.category_outlined);
 
   final String label;
   final IconData icon;

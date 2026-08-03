@@ -11,5 +11,7 @@ abstract class AppRoutes {
   static const String itemDetails = '/item/:id';
   static const String chatList = '/chat-list';
   static const String chat = '/chat/:id';
+  static const String ownerProfile = '/owner/:id';
+  static const String wishlist = '/wishlist';
   static const String notifications = '/notifications';
 }

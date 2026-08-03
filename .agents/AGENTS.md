@@ -57,3 +57,4 @@
 2. **Preserve Documentation**: Refer to [ARCHITECTURE.md](file:///c:/Users/muham/Vscode%20Projects/Borrowly/ARCHITECTURE.md) and [WORKFLOW_GUIDELINES.md](file:///c:/Users/muham/Vscode%20Projects/Borrowly/WORKFLOW_GUIDELINES.md) when introducing new features or refactoring.
 3. **Immutability & Riverpod**: Expose immutable `AsyncValue` or read-only provider states. Never mutate state variables directly from UI widgets.
 4. **Static Analysis**: Always verify code edits with `flutter analyze` to ensure 0 errors.
+5. **No Automated Git Actions**: NEVER run any git commands (`git add`, `git commit`, `git push`, `git checkout`, etc.) automatically. All code edits remain local. Only run git commands when the user explicitly requests a specific git command.

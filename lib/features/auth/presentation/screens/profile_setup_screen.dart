@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../app/router/routes.dart';
@@ -8,6 +9,7 @@ import '../../../../app/theme/app_typography.dart';
 import '../../../../core/widgets/borrowly_button.dart';
 import '../../../../core/widgets/borrowly_card.dart';
 import '../../../../core/widgets/borrowly_text_field.dart';
+import '../../../../core/widgets/borrowly_toast.dart';
 import '../providers/auth_provider.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -61,7 +63,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'Set your neighborhood search radius for physical handovers (Maximum 5 km).',
+                'Set your contact info and neighborhood search radius for physical handovers.',
                 style: AppTypography.bodyMedium(isDark),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -75,12 +77,16 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Phone Number Field
+              // Phone Number Field (With 10-Digit Validation)
               BorrowlyTextField(
-                label: 'Phone Number (For Meetup Coordination)',
-                hintText: '+1 (555) 019-2834',
+                label: 'Phone Number (10 Digits Required)',
+                hintText: 'e.g. 9876543210',
                 keyboardType: TextInputType.phone,
                 controller: _phoneController,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 prefixIcon: const Icon(Icons.phone_outlined, size: 20),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -134,12 +140,29 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                 isFullWidth: true,
                 isLoading: authState.status == AuthStatus.loading,
                 onPressed: () async {
+                  final phoneInput = _phoneController.text.trim();
+                  final digitsOnly = phoneInput.replaceAll(RegExp(r'\D'), '');
+
+                  if (phoneInput.isNotEmpty && digitsOnly.length != 10) {
+                    BorrowlyToast.show(
+                      context,
+                      'Phone number must be exactly 10 digits',
+                      icon: Icons.phone_android_rounded,
+                    );
+                    return;
+                  }
+
                   await ref.read(authProvider.notifier).updateProfile(
                         fullName: _fullNameController.text.isEmpty ? 'Borrowly Neighbor' : _fullNameController.text,
-                        phone: _phoneController.text,
+                        phone: digitsOnly,
                         searchRadiusKm: _selectedRadiusKm,
                       );
                   if (context.mounted) {
+                    BorrowlyToast.show(
+                      context,
+                      'Profile & 10-digit phone number updated!',
+                      icon: Icons.check_circle_rounded,
+                    );
                     context.go(AppRoutes.home);
                   }
                 },

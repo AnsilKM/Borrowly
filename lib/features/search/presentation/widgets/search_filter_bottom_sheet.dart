@@ -84,13 +84,14 @@ class SearchFilterBottomSheet extends ConsumerWidget {
                         child: ChoiceChip(
                           label: Text('${radius.toInt()} km'),
                           selected: isSelected,
+                          showCheckmark: false,
                           onSelected: (val) {
                             if (val) searchNotifier.setMaxDistance(radius);
                           },
                           selectedColor: AppColors.primary,
                           backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
                           labelStyle: TextStyle(
-                            color: isSelected ? AppColors.textPrimary : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                            color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             fontSize: 12,
                           ),
@@ -140,16 +141,18 @@ class SearchFilterBottomSheet extends ConsumerWidget {
                     final isSelected = searchState.category == cat;
                     return ChoiceChip(
                       label: Text(cat.label),
-                      avatar: Icon(cat.icon, size: 14),
+                      avatar: Icon(cat.icon, size: 14, color: isSelected ? Colors.white : null),
                       selected: isSelected,
+                      showCheckmark: false,
                       onSelected: (val) {
                         if (val) searchNotifier.setCategory(cat);
                       },
                       selectedColor: AppColors.primary,
                       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
                       labelStyle: TextStyle(
-                        color: isSelected ? AppColors.textPrimary : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                        color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
                         fontSize: 11,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
                     );
                   }).toList(),
@@ -223,11 +226,12 @@ class _PricingChip extends StatelessWidget {
       child: ChoiceChip(
         label: Text(label),
         selected: isSelected,
+        showCheckmark: false,
         onSelected: (_) => onTap(),
         selectedColor: AppColors.primary,
         backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
         labelStyle: TextStyle(
-          color: isSelected ? AppColors.textPrimary : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+          color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
           fontSize: 11,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
@@ -253,16 +257,27 @@ class _SortTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      borderRadius: AppRadii.borderMd,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: isDark ? 0.2 : 0.1)
+              : Colors.transparent,
+          borderRadius: AppRadii.borderMd,
+          border: isSelected ? Border.all(color: AppColors.primary, width: 1.5) : null,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: AppTypography.bodyMedium(isDark)),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: AppColors.primary, size: 20)
-            else
-              Icon(Icons.circle_outlined, color: isDark ? AppColors.darkBorder : AppColors.border, size: 20),
+            Text(
+              label,
+              style: AppTypography.bodyMedium(isDark).copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected ? AppColors.primary : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+              ),
+            ),
           ],
         ),
       ),

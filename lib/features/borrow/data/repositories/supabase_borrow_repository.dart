@@ -1,12 +1,9 @@
-import 'package:flutter/foundation.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/borrow_request_entity.dart';
 import '../../domain/repositories/borrow_repository.dart';
-import 'mock_borrow_repository.dart';
 
 class SupabaseBorrowRepository implements BorrowRepository {
-  final MockBorrowRepository _fallbackMockRepo = MockBorrowRepository();
-
   BorrowRequestEntity _mapRowToEntity(Map<String, dynamic> row) {
     final statusStr = row['status'] as String? ?? 'pending';
     final status = BorrowRequestStatus.values.firstWhere(
@@ -37,6 +34,12 @@ class SupabaseBorrowRepository implements BorrowRepository {
 
   @override
   Future<BorrowRequestEntity> createBorrowRequest(BorrowRequestEntity request) async {
+    BorrowlyLogger.event('Borrow: Create Borrow Request', parameters: {
+      'itemId': request.itemId,
+      'itemTitle': request.itemTitle,
+      'totalPrice': request.totalPrice,
+    });
+
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -58,13 +61,16 @@ class SupabaseBorrowRepository implements BorrowRepository {
         };
 
         final response = await client.from('borrow_requests').insert(row).select().single();
-        return _mapRowToEntity(response);
-      } catch (e) {
-        debugPrint('Supabase createBorrowRequest fallback to local: $e');
+        final created = _mapRowToEntity(response);
+        BorrowlyLogger.info('Borrow request created in Supabase: ${created.id}');
+        return created;
+      } catch (e, stack) {
+        BorrowlyLogger.error('createBorrowRequest error', e, stack);
+        rethrow;
       }
     }
 
-    return _fallbackMockRepo.createBorrowRequest(request);
+    throw Exception('Supabase service is not available');
   }
 
   @override
@@ -72,6 +78,11 @@ class SupabaseBorrowRepository implements BorrowRepository {
     required String userId,
     bool isOwner = false,
   }) async {
+    BorrowlyLogger.event('Borrow: Fetch Requests', parameters: {'userId': userId, 'isOwner': isOwner});
+    if (userId == 'guest_user_id' || userId.isEmpty) {
+      return [];
+    }
+
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -85,11 +96,11 @@ class SupabaseBorrowRepository implements BorrowRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapRowToEntity(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        debugPrint('Supabase getBorrowRequests fallback to local: $e');
+        BorrowlyLogger.warning('getBorrowRequests error: $e');
       }
     }
 
-    return _fallbackMockRepo.getBorrowRequests(userId: userId, isOwner: isOwner);
+    return [];
   }
 
   @override
@@ -97,6 +108,11 @@ class SupabaseBorrowRepository implements BorrowRepository {
     required String requestId,
     required BorrowRequestStatus newStatus,
   }) async {
+    BorrowlyLogger.event('Borrow: Update Status', parameters: {
+      'requestId': requestId,
+      'newStatus': newStatus.name,
+    });
+
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -108,11 +124,12 @@ class SupabaseBorrowRepository implements BorrowRepository {
             .single();
 
         return _mapRowToEntity(response);
-      } catch (e) {
-        debugPrint('Supabase updateRequestStatus fallback to local: $e');
+      } catch (e, stack) {
+        BorrowlyLogger.error('updateRequestStatus error', e, stack);
+        rethrow;
       }
     }
 
-    return _fallbackMockRepo.updateRequestStatus(requestId: requestId, newStatus: newStatus);
+    throw Exception('Supabase service is not available');
   }
 }

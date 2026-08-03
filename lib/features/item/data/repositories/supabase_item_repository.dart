@@ -1,13 +1,13 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/item_category.dart';
 import '../../domain/entities/item_entity.dart';
 import '../../domain/repositories/item_repository.dart';
-import 'mock_item_repository.dart';
 
 class SupabaseItemRepository implements ItemRepository {
-  final MockItemRepository _fallbackMockRepo = MockItemRepository();
   bool _hasSeeded = false;
 
   ItemEntity _mapSupabaseRowToEntity(Map<String, dynamic> row) {
@@ -48,6 +48,15 @@ class SupabaseItemRepository implements ItemRepository {
       final list = response as List<dynamic>;
       if (list.isEmpty) {
         BorrowlyLogger.info('Supabase items table is empty. Inserting initial neighborhood items into Supabase...');
+        try {
+          await client.from('users').upsert([
+            {'id': '00000000-0000-0000-0000-000000000001', 'full_name': 'Marcus Vance', 'email': 'marcus@borrowly.com'},
+            {'id': '00000000-0000-0000-0000-000000000002', 'full_name': 'Elena Rostova', 'email': 'elena@borrowly.com'},
+            {'id': '00000000-0000-0000-0000-000000000003', 'full_name': 'Sarah Jenkins', 'email': 'sarah@borrowly.com'},
+            {'id': '00000000-0000-0000-0000-000000000004', 'full_name': 'David Chen', 'email': 'david@borrowly.com'},
+          ]);
+        } catch (_) {}
+
         await client.from('items').insert([
           {
             'owner_id': '00000000-0000-0000-0000-000000000001',
@@ -61,6 +70,7 @@ class SupabaseItemRepository implements ItemRepository {
             'deposit_amount': 50.0,
             'images': ['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600'],
             'location_name': 'Oak Street (0.8 km away)',
+            'location': 'POINT(76.2711 9.9312)',
             'distance_km': 0.8,
             'is_available': true,
             'rating_score': 4.9,
@@ -78,6 +88,7 @@ class SupabaseItemRepository implements ItemRepository {
             'deposit_amount': 40.0,
             'images': ['https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600'],
             'location_name': 'Pine Avenue (1.2 km away)',
+            'location': 'POINT(76.2711 9.9312)',
             'distance_km': 1.2,
             'is_available': true,
             'rating_score': 5.0,
@@ -95,6 +106,7 @@ class SupabaseItemRepository implements ItemRepository {
             'deposit_amount': 0.0,
             'images': ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600'],
             'location_name': 'Maple Drive (0.5 km away)',
+            'location': 'POINT(76.2711 9.9312)',
             'distance_km': 0.5,
             'is_available': true,
             'rating_score': 4.8,
@@ -112,6 +124,7 @@ class SupabaseItemRepository implements ItemRepository {
             'deposit_amount': 60.0,
             'images': ['https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600'],
             'location_name': 'Cedar Lane (1.8 km away)',
+            'location': 'POINT(76.2711 9.9312)',
             'distance_km': 1.8,
             'is_available': true,
             'rating_score': 4.9,
@@ -124,6 +137,8 @@ class SupabaseItemRepository implements ItemRepository {
       BorrowlyLogger.warning('Supabase auto-seed notice: $e');
     }
   }
+
+  final LocalStorageService _localStorageService = LocalStorageService();
 
   @override
   Future<List<ItemEntity>> getNearbyItems({
@@ -146,7 +161,12 @@ class SupabaseItemRepository implements ItemRepository {
             .order('distance_km', ascending: true);
 
         final rows = response as List<dynamic>;
-        final items = rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
+        final rawRows = rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
+        
+        // Cache to Hive asynchronously for zero-lag subsequent loads
+        _localStorageService.cacheNearbyItems(rawRows);
+
+        final items = rawRows.map((r) => _mapSupabaseRowToEntity(r)).toList();
         BorrowlyLogger.info('Supabase returned ${items.length} live items.');
 
         if (category != ItemCategory.all) {
@@ -154,11 +174,22 @@ class SupabaseItemRepository implements ItemRepository {
         }
         return items;
       } catch (e) {
-        BorrowlyLogger.warning('Supabase fetch error, fallback to local isolate: $e');
+        BorrowlyLogger.warning('Supabase fetch error, reading Hive local cache: $e');
       }
     }
 
-    return _fallbackMockRepo.getNearbyItems(maxDistanceKm: maxDistanceKm, category: category);
+    // Fast Hive Local Cache Fallback (< 5ms response time)
+    final cachedRaw = _localStorageService.getCachedNearbyItems();
+    if (cachedRaw.isNotEmpty) {
+      final cachedItems = cachedRaw.map((r) => _mapSupabaseRowToEntity(r)).toList();
+      BorrowlyLogger.info('Loaded ${cachedItems.length} items from Hive local storage cache.');
+      if (category != ItemCategory.all) {
+        return cachedItems.where((i) => i.category == category).toList();
+      }
+      return cachedItems;
+    }
+
+    return [];
   }
 
   @override
@@ -179,11 +210,11 @@ class SupabaseItemRepository implements ItemRepository {
         BorrowlyLogger.info('Fetched ${items.length} live items from Supabase.');
         return items;
       } catch (e) {
-        BorrowlyLogger.warning('Recently added fallback to local isolate: $e');
+        BorrowlyLogger.warning('Recently added fetch error: $e');
       }
     }
 
-    return _fallbackMockRepo.getRecentlyAdded(maxDistanceKm: maxDistanceKm);
+    return [];
   }
 
   @override
@@ -202,11 +233,11 @@ class SupabaseItemRepository implements ItemRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        BorrowlyLogger.warning('Free items fallback to local isolate: $e');
+        BorrowlyLogger.warning('Free items fetch error: $e');
       }
     }
 
-    return _fallbackMockRepo.getFreeItems(maxDistanceKm: maxDistanceKm);
+    return [];
   }
 
   @override
@@ -236,18 +267,11 @@ class SupabaseItemRepository implements ItemRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        BorrowlyLogger.warning('Search fallback to local isolate: $e');
+        BorrowlyLogger.warning('Search error: $e');
       }
     }
 
-    return _fallbackMockRepo.searchItems(
-      query: query,
-      maxDistanceKm: maxDistanceKm,
-      category: category,
-      pricingFilter: pricingFilter,
-      onlyAvailable: onlyAvailable,
-      sortBy: sortBy,
-    );
+    return [];
   }
 
   @override
@@ -261,6 +285,27 @@ class SupabaseItemRepository implements ItemRepository {
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
+        final authUser = client.auth.currentUser;
+        final validOwnerId = authUser != null
+            ? authUser.id
+            : ((item.ownerId.length == 36 && item.ownerId.contains('-'))
+                ? item.ownerId
+                : '00000000-0000-0000-0000-000000000001');
+
+        if (validOwnerId.length == 36 && validOwnerId.contains('-')) {
+          try {
+            await client.from('users').upsert({
+              'id': validOwnerId,
+              'full_name': item.ownerName,
+              'email': authUser?.email ?? 'neighbor@borrowly.com',
+              'avatar_url': item.ownerAvatar,
+            });
+            BorrowlyLogger.info('Ensured owner ID $validOwnerId exists in public.users table.');
+          } catch (e) {
+            BorrowlyLogger.warning('Owner upsert notice: $e');
+          }
+        }
+
         final row = {
           'title': item.title,
           'description': item.description,
@@ -269,9 +314,10 @@ class SupabaseItemRepository implements ItemRepository {
           'is_free': item.isFree,
           'deposit_amount': item.depositAmount,
           'images': item.images,
-          'owner_id': item.ownerId,
+          'owner_id': validOwnerId,
           'owner_name': item.ownerName,
           'location_name': item.locationName,
+          'location': 'POINT(76.2711 9.9312)',
           'is_available': true,
         };
 
@@ -280,11 +326,13 @@ class SupabaseItemRepository implements ItemRepository {
         BorrowlyLogger.info('Item listed successfully in Supabase: ${created.id}');
         return created;
       } catch (e, stack) {
-        BorrowlyLogger.error('Add item error fallback to local', e, stack);
+        BorrowlyLogger.error('Add item error in Supabase', e, stack);
+        debugPrint('❌ [SUPABASE ADD ITEM LOGCAT ERROR]: $e \n $stack');
+        rethrow;
       }
     }
 
-    return _fallbackMockRepo.addItem(item);
+    throw Exception('Supabase service is not available');
   }
 
   @override
@@ -298,10 +346,10 @@ class SupabaseItemRepository implements ItemRepository {
           return _mapSupabaseRowToEntity(response);
         }
       } catch (e) {
-        BorrowlyLogger.warning('getItemById fallback to local: $e');
+        BorrowlyLogger.warning('getItemById error: $e');
       }
     }
 
-    return _fallbackMockRepo.getItemById(id);
+    return null;
   }
 }

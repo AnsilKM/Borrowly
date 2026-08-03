@@ -1,13 +1,10 @@
-import 'package:flutter/foundation.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/chat_message_entity.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/repositories/chat_repository.dart';
-import 'mock_chat_repository.dart';
 
 class SupabaseChatRepository implements ChatRepository {
-  final MockChatRepository _fallbackMockRepo = MockChatRepository();
-
   ConversationEntity _mapRowToConversation(Map<String, dynamic> row) {
     return ConversationEntity(
       id: row['id'] as String? ?? '',
@@ -38,6 +35,7 @@ class SupabaseChatRepository implements ChatRepository {
 
   @override
   Future<List<ConversationEntity>> getConversations(String userId) async {
+    BorrowlyLogger.event('Chat: Fetch Conversations', parameters: {'userId': userId});
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -49,15 +47,16 @@ class SupabaseChatRepository implements ChatRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapRowToConversation(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        debugPrint('Supabase getConversations fallback to local: $e');
+        BorrowlyLogger.warning('getConversations error: $e');
       }
     }
 
-    return _fallbackMockRepo.getConversations(userId);
+    return [];
   }
 
   @override
   Future<List<ChatMessageEntity>> getMessages(String conversationId) async {
+    BorrowlyLogger.event('Chat: Fetch Messages', parameters: {'conversationId': conversationId});
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -70,15 +69,20 @@ class SupabaseChatRepository implements ChatRepository {
         final rows = response as List<dynamic>;
         return rows.map((r) => _mapRowToMessage(r as Map<String, dynamic>)).toList();
       } catch (e) {
-        debugPrint('Supabase getMessages fallback to local: $e');
+        BorrowlyLogger.warning('getMessages error: $e');
       }
     }
 
-    return _fallbackMockRepo.getMessages(conversationId);
+    return [];
   }
 
   @override
   Future<ChatMessageEntity> sendMessage(ChatMessageEntity message) async {
+    BorrowlyLogger.event('Chat: Send Message', parameters: {
+      'conversationId': message.conversationId,
+      'senderId': message.senderId,
+    });
+
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
@@ -92,12 +96,15 @@ class SupabaseChatRepository implements ChatRepository {
         };
 
         final response = await client.from('messages').insert(row).select().single();
-        return _mapRowToMessage(response);
-      } catch (e) {
-        debugPrint('Supabase sendMessage fallback to local: $e');
+        final sent = _mapRowToMessage(response);
+        BorrowlyLogger.info('Message sent via Supabase: ${sent.id}');
+        return sent;
+      } catch (e, stack) {
+        BorrowlyLogger.error('sendMessage error', e, stack);
+        rethrow;
       }
     }
 
-    return _fallbackMockRepo.sendMessage(message);
+    throw Exception('Supabase service is not available');
   }
 }

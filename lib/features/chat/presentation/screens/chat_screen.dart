@@ -128,47 +128,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
 
-            // Chat Input Bar
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.darkSurface : AppColors.surface,
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? AppColors.darkBorder : AppColors.border,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      style: AppTypography.bodyMedium(isDark),
-                      decoration: const InputDecoration(
-                        hintText: 'Type a message to coordinate meetup...',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
+            // Chat Input Bar (With IME Keyboard Padding)
+            AnimatedPadding(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.surface,
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                      width: 1,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.xs),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: AppColors.primary),
-                    onPressed: () {
-                      if (_textController.text.isNotEmpty) {
-                        chatController.sendTextMessage(
-                          text: _textController.text,
-                          senderId: currentUserId,
-                          senderName: user?.fullName ?? 'Alex Morgan',
-                        );
-                        _textController.clear();
-                      }
-                    },
-                  ),
-                ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        textCapitalization: TextCapitalization.sentences,
+                        style: AppTypography.bodyMedium(isDark),
+                        decoration: const InputDecoration(
+                          hintText: 'Type a message to coordinate meetup...',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: AppColors.primary),
+                      onPressed: () {
+                        if (_textController.text.isNotEmpty) {
+                          chatController.sendTextMessage(
+                            text: _textController.text,
+                            senderId: currentUserId,
+                            senderName: user?.fullName ?? 'Alex Morgan',
+                          );
+                          _textController.clear();
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

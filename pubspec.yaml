@@ -16,8 +16,10 @@ dependencies:
   supabase_flutter: ^2.3.0
   google_sign_in: ^6.2.1
   
-  # Image Picker
+  # Image Picker & Permissions
   image_picker: ^1.0.7
+  image_cropper: ^8.0.0
+  permission_handler: ^11.3.1
 
   # State Management & DI
   flutter_riverpod: ^2.4.9
@@ -40,6 +42,7 @@ dependencies:
   google_fonts: ^6.1.0
   cached_network_image: ^3.3.1
   flutter_svg: ^2.0.9
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:

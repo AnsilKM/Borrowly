@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 import '../../data/repositories/supabase_borrow_repository.dart';
 import '../../domain/entities/borrow_request_entity.dart';
 import '../../domain/repositories/borrow_repository.dart';
@@ -24,7 +25,10 @@ final updateBorrowStatusUseCaseProvider = Provider<UpdateBorrowStatusUseCase>((r
 
 final userBorrowRequestsProvider = FutureProvider.family<List<BorrowRequestEntity>, bool>((ref, isOwner) async {
   final usecase = ref.watch(getBorrowRequestsUseCaseProvider);
-  final result = await usecase(GetBorrowRequestsParams(userId: 'guest_user_id', isOwner: isOwner));
+  final user = ref.watch(authProvider).user;
+  final userId = user?.id ?? 'guest_user_id';
+
+  final result = await usecase(GetBorrowRequestsParams(userId: userId, isOwner: isOwner));
   return result.fold(
     onSuccess: (list) => list,
     onError: (failure) => throw Exception(failure.message),

@@ -157,6 +157,16 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
+  Future<void> updateProfilePicture(String avatarUrl) async {
+    if (state.user == null) return;
+    final updated = state.user!.copyWith(avatarUrl: avatarUrl);
+    final result = await _updateProfileUseCase(updated);
+    result.fold(
+      onSuccess: (saved) => state = AuthState(status: AuthStatus.authenticated, user: saved),
+      onError: (failure) => state = AuthState(status: AuthStatus.error, errorMessage: failure.message),
+    );
+  }
+
   Future<void> signOut() async {
     state = state.copyWith(status: AuthStatus.loading);
     await _authRepository.signOut();

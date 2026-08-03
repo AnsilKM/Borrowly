@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_spacing.dart';
 import '../../app/theme/app_typography.dart';
@@ -14,9 +15,13 @@ class BorrowlyTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final ValueChanged<String>? onChanged;
   final FormFieldValidator<String>? validator;
+  final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
   final int maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
+
+  final TextCapitalization textCapitalization;
 
   const BorrowlyTextField({
     super.key,
@@ -26,6 +31,7 @@ class BorrowlyTextField extends StatelessWidget {
     this.controller,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
+    this.textCapitalization = TextCapitalization.sentences,
     this.prefixIcon,
     this.suffixIcon,
     this.onChanged,
@@ -33,6 +39,8 @@ class BorrowlyTextField extends StatelessWidget {
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
+    this.inputFormatters,
+    this.maxLength,
   });
 
   @override
@@ -59,15 +67,19 @@ class BorrowlyTextField extends StatelessWidget {
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
+          textCapitalization: textCapitalization,
           onChanged: onChanged,
           validator: validator,
           maxLines: maxLines,
           readOnly: readOnly,
           onTap: onTap,
+          inputFormatters: inputFormatters,
+          maxLength: maxLength,
           style: AppTypography.bodyLarge(isDark).copyWith(
             color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
           ),
           decoration: InputDecoration(
+            counterText: '',
             hintText: hintText,
             errorText: errorText,
             filled: true,

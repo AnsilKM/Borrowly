@@ -19,6 +19,14 @@ class BorrowlyApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
       routerConfig: router,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: const TextScaler.linear(0.94),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }

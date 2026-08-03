@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -117,12 +118,19 @@ class _RequestBorrowBottomSheetState extends ConsumerState<RequestBorrowBottomSh
                     children: [
                       ClipRRect(
                         borderRadius: AppRadii.borderSm,
-                        child: Image.network(
-                          widget.item.images.first,
-                          width: 54,
-                          height: 54,
-                          fit: BoxFit.cover,
-                        ),
+                        child: widget.item.images.first.startsWith('http')
+                            ? Image.network(
+                                widget.item.images.first,
+                                width: 54,
+                                height: 54,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.file(
+                                File(widget.item.images.first),
+                                width: 54,
+                                height: 54,
+                                fit: BoxFit.cover,
+                              ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
@@ -139,9 +147,103 @@ class _RequestBorrowBottomSheetState extends ConsumerState<RequestBorrowBottomSh
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                // Date Selection Cards
-                Text('Borrow Period', style: AppTypography.labelText(isDark)),
+                // Borrow Period & Custom Day Duration Selection
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Borrow Period', style: AppTypography.labelText(isDark)),
+                    Text(
+                      '$_rentalDays Custom Day${_rentalDays > 1 ? "s" : ""}',
+                      style: AppTypography.headingSmall(isDark).copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: AppSpacing.xs),
+
+                // Quick Preset Chips + Stepper Container
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                    borderRadius: AppRadii.borderLg,
+                  ),
+                  child: Column(
+                    children: [
+                      // Preset Chips
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [1, 3, 7, 14].map((days) {
+                          final isSelected = _rentalDays == days;
+                          return ChoiceChip(
+                            label: Text('$days ${days == 1 ? "Day" : "Days"}'),
+                            selected: isSelected,
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 12,
+                            ),
+                            onSelected: (selected) {
+                              if (selected) {
+                                setState(() {
+                                  _endDate = _startDate.add(Duration(days: days - 1));
+                                });
+                              }
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+
+                      // Custom Stepper (- / +)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                            onPressed: _rentalDays > 1
+                                ? () {
+                                    setState(() {
+                                      _endDate = _endDate.subtract(const Duration(days: 1));
+                                    });
+                                  }
+                                : null,
+                            icon: const Icon(Icons.remove_circle_outline_rounded),
+                            color: AppColors.primary,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.darkBackground : Colors.white,
+                              borderRadius: AppRadii.borderMd,
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              '$_rentalDays Days',
+                              style: AppTypography.headingSmall(isDark).copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _endDate = _endDate.add(const Duration(days: 1));
+                              });
+                            },
+                            icon: const Icon(Icons.add_circle_outline_rounded),
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+
+                // Specific Date Range Pickers
                 Row(
                   children: [
                     Expanded(

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,10 +11,22 @@ import 'package:borrowly/core/widgets/borrowly_badge.dart';
 import 'package:borrowly/core/widgets/borrowly_button.dart';
 import 'package:borrowly/core/widgets/borrowly_card.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
+import 'package:borrowly/core/widgets/borrowly_image_picker_bottom_sheet.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
+import 'package:borrowly/features/borrow/presentation/providers/borrow_provider.dart';
+import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  String _formatPhoneNumber(String? phone) {
+    if (phone == null || phone.isEmpty) return 'No Phone Added';
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.length == 10) {
+      return '+91 ${digits.substring(0, 5)} ${digits.substring(5)}';
+    }
+    return phone;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,6 +36,34 @@ class ProfileScreen extends ConsumerWidget {
 
     final userName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Guest Neighbor';
     final userEmail = (user != null && user.email.isNotEmpty) ? user.email : 'guest@borrowly.app';
+    final userPhone = _formatPhoneNumber(user?.phone);
+
+    final borrowerRequestsAsync = authState.isGuest ? null : ref.watch(userBorrowRequestsProvider(false));
+    final nearbyItemsAsync = authState.isGuest ? null : ref.watch(nearbyItemsProvider);
+
+    final borrowsCountStr = authState.isGuest
+        ? '0'
+        : (borrowerRequestsAsync?.when(
+              data: (reqs) => '${reqs.length}',
+              loading: () => '...',
+              error: (_, __) => '0',
+            ) ?? '0');
+
+    final userItems = nearbyItemsAsync?.when(
+          data: (items) => items.where((i) => i.ownerId == user?.id || (user != null && i.ownerName == user.fullName)).toList(),
+          loading: () => null,
+          error: (_, __) => null,
+        );
+
+    final sharedCountStr = authState.isGuest
+        ? '0'
+        : (userItems != null ? '${userItems.length}' : '0');
+
+    final ratingStr = authState.isGuest
+        ? 'N/A'
+        : (userItems != null && userItems.isNotEmpty
+            ? '${(userItems.fold<double>(0, (sum, i) => sum + i.ratingScore) / userItems.length).toStringAsFixed(1)} ⭐'
+            : '5.0 ⭐');
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
@@ -49,26 +90,72 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(AppSpacing.lg),
                 child: Column(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primary, width: 2),
-                        boxShadow: AppShadows.medium,
-                      ),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 38,
-                        backgroundImage: user?.avatarUrl != null ? NetworkImage(user!.avatarUrl!) : null,
-                        child: user?.avatarUrl == null
-                            ? Text(
-                                userName[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: AppColors.primaryDark,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
+                    GestureDetector(
+                      onTap: () {
+                        BorrowlyImagePickerBottomSheet.show(
+                          context,
+                          title: 'Update Profile Picture',
+                          subtitle: 'Choose a photo for your neighbor profile',
+                          initialPreviewPath: user?.avatarUrl,
+                          onConfirmSave: (path) async {
+                            await ref.read(authProvider.notifier).updateProfilePicture(path);
+                            if (context.mounted) {
+                              BorrowlyToast.show(
+                                context,
+                                'Profile picture updated successfully!',
+                                icon: Icons.check_circle_rounded,
+                              );
+                            }
+                          },
+                        );
+                      },
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.primary, width: 2),
+                              boxShadow: AppShadows.medium,
+                            ),
+                            child: CircleAvatar(
+                              backgroundColor: Colors.white,
+                              radius: 38,
+                              backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                                  ? (user.avatarUrl!.startsWith('http')
+                                      ? NetworkImage(user.avatarUrl!) as ImageProvider
+                                      : FileImage(File(user.avatarUrl!)))
+                                  : null,
+                              child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
+                                  ? Text(
+                                      userName[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        color: AppColors.primaryDark,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  : null,
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 1.5),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: AppSpacing.sm + 2),
@@ -85,6 +172,23 @@ class ProfileScreen extends ConsumerWidget {
                       style: AppTypography.bodyMedium(isDark).copyWith(
                         color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                       ),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.phone_rounded, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          userPhone,
+                          style: AppTypography.bodyMedium(isDark).copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: user?.phone != null && user!.phone!.isNotEmpty
+                                ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: AppSpacing.md),
                     Row(
@@ -107,12 +211,12 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Community Stats
+              // Community Stats (Real Dynamic Data)
               Row(
                 children: [
                   Expanded(
                     child: _StatCard(
-                      value: authState.isGuest ? '0' : '5',
+                      value: borrowsCountStr,
                       label: 'Borrows',
                       icon: Icons.handshake_rounded,
                       isDark: isDark,
@@ -121,7 +225,7 @@ class ProfileScreen extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.xs + 2),
                   Expanded(
                     child: _StatCard(
-                      value: authState.isGuest ? '0' : '8',
+                      value: sharedCountStr,
                       label: 'Shared',
                       icon: Icons.inventory_2_rounded,
                       isDark: isDark,
@@ -130,7 +234,7 @@ class ProfileScreen extends ConsumerWidget {
                   const SizedBox(width: AppSpacing.xs + 2),
                   Expanded(
                     child: _StatCard(
-                      value: authState.isGuest ? 'N/A' : '4.9 ⭐',
+                      value: ratingStr,
                       label: 'Rating',
                       icon: Icons.star_rounded,
                       isDark: isDark,
@@ -150,7 +254,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ] else ...[
                 BorrowlyButton(
-                  label: 'Edit Neighborhood Profile',
+                  label: 'Edit Profile & Phone Number',
                   variant: BorrowlyButtonVariant.secondary,
                   isFullWidth: true,
                   icon: const Icon(Icons.edit_location_alt_rounded),

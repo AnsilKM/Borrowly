@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/network/supabase_service.dart';
@@ -55,18 +56,37 @@ class SupabaseAuthRepository implements AuthRepository {
       return UserEntity.guest();
     }
 
+    // Fast Hive Local Profile Cache (< 5ms response time)
+    final cached = _localStorageService.getCachedUserProfile();
+    if (cached != null) {
+      BorrowlyLogger.info('Loaded cached user profile from Hive: ${cached['full_name']}');
+      return UserEntity(
+        id: cached['id'] as String? ?? 'guest',
+        email: cached['email'] as String? ?? '',
+        fullName: cached['full_name'] as String? ?? 'Borrowly User',
+        avatarUrl: cached['avatar_url'] as String?,
+        phone: cached['phone'] as String?,
+        searchRadiusKm: cached['search_radius_km'] as int? ?? 5,
+        isGuest: cached['is_guest'] as bool? ?? false,
+        createdAt: DateTime.tryParse(cached['created_at'] as String? ?? '') ?? DateTime.now(),
+      );
+    }
+
     final client = SupabaseService.client;
     if (client != null && client.auth.currentSession != null) {
       final user = client.auth.currentUser!;
       BorrowlyLogger.info('Current user session found: ${user.email}');
-      return UserEntity(
+      final entity = UserEntity(
         id: user.id,
         email: user.email ?? '',
         fullName: user.userMetadata?['full_name'] ?? 'Borrowly User',
         avatarUrl: user.userMetadata?['avatar_url'],
-        phone: user.phone,
+        phone: user.userMetadata?['phone'] as String? ?? user.phone,
+        searchRadiusKm: (user.userMetadata?['search_radius_km'] as num?)?.toInt() ?? 5,
         createdAt: DateTime.tryParse(user.createdAt) ?? DateTime.now(),
       );
+      _saveUserLocal(entity);
+      return entity;
     }
 
     BorrowlyLogger.info('No active session found.');
@@ -79,61 +99,85 @@ class SupabaseAuthRepository implements AuthRepository {
     final client = SupabaseService.client;
 
     if (client != null && SupabaseService.isConfigured) {
+      // 1. Try Native Google Sign-In SDK
       try {
         final googleSignIn = GoogleSignIn(
+          serverClientId: '76981842422-qqe0i49gbhcl1944mddlqur2n7tnombs.apps.googleusercontent.com',
           scopes: ['email', 'profile'],
         );
 
         BorrowlyLogger.info('Opening Google Sign-In native account picker...');
         final googleUser = await googleSignIn.signIn();
 
-        if (googleUser == null) {
+        if (googleUser != null) {
+          BorrowlyLogger.info('Google Account selected: ${googleUser.email}');
+          final googleAuth = await googleUser.authentication;
+          final accessToken = googleAuth.accessToken;
+          final idToken = googleAuth.idToken;
+
+          if (idToken != null) {
+            BorrowlyLogger.info('Authenticating ID Token with Supabase...');
+            final res = await client.auth.signInWithIdToken(
+              provider: OAuthProvider.google,
+              idToken: idToken,
+              accessToken: accessToken,
+            );
+
+            if (res.user != null) {
+              final user = UserEntity(
+                id: res.user!.id,
+                email: res.user!.email ?? googleUser.email,
+                fullName: res.user!.userMetadata?['full_name'] ?? googleUser.displayName ?? 'Alex Morgan',
+                avatarUrl: res.user!.userMetadata?['avatar_url'] ?? googleUser.photoUrl,
+                searchRadiusKm: 3,
+                isGuest: false,
+                createdAt: DateTime.now(),
+              );
+              await _saveUserLocal(user);
+              _authStateController.add(user);
+              BorrowlyLogger.event('Auth: Google Sign-In Success', parameters: {
+                'userId': user.id,
+                'email': user.email,
+              });
+              return user;
+            }
+          }
+        } else {
           BorrowlyLogger.warning('Google Sign-In cancelled by user.');
           throw Exception('Google Sign-In was cancelled by the user.');
         }
+      } catch (e) {
+        BorrowlyLogger.warning('Native GoogleSignIn notice ($e). Triggering Supabase OAuth Web Flow...');
+      }
 
-        BorrowlyLogger.info('Google Account selected: ${googleUser.email}');
-        final googleAuth = await googleUser.authentication;
-        final accessToken = googleAuth.accessToken;
-        final idToken = googleAuth.idToken;
-
-        if (idToken == null) {
-          BorrowlyLogger.error('Google Auth Token missing (idToken is null).');
-          throw Exception('Failed to obtain Google ID Token.');
-        }
-
-        BorrowlyLogger.info('Authenticating ID Token with Supabase...');
-        final res = await client.auth.signInWithIdToken(
-          provider: OAuthProvider.google,
-          idToken: idToken,
-          accessToken: accessToken,
+      // 2. Direct Supabase Web OAuth Flow Fallback (Fixes Android ApiException 10)
+      try {
+        final bool success = await client.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: kIsWeb ? null : 'io.supabase.borrowly://login-callback',
         );
 
-        if (res.user != null) {
+        if (success && client.auth.currentUser != null) {
+          final u = client.auth.currentUser!;
           final user = UserEntity(
-            id: res.user!.id,
-            email: res.user!.email ?? googleUser.email,
-            fullName: res.user!.userMetadata?['full_name'] ?? googleUser.displayName ?? 'Alex Morgan',
-            avatarUrl: res.user!.userMetadata?['avatar_url'] ?? googleUser.photoUrl,
+            id: u.id,
+            email: u.email ?? '',
+            fullName: u.userMetadata?['full_name'] ?? 'Borrowly User',
+            avatarUrl: u.userMetadata?['avatar_url'],
             searchRadiusKm: 3,
             isGuest: false,
             createdAt: DateTime.now(),
           );
           await _saveUserLocal(user);
           _authStateController.add(user);
-          BorrowlyLogger.event('Auth: Google Sign-In Success', parameters: {
-            'userId': user.id,
-            'email': user.email,
-          });
           return user;
         }
       } catch (e, stack) {
-        BorrowlyLogger.error('Google Sign-In Exception', e, stack);
+        BorrowlyLogger.error('Supabase OAuth Error', e, stack);
         rethrow;
       }
     }
 
-    BorrowlyLogger.warning('Supabase not configured or client null.');
     throw Exception('Supabase connection is not available.');
   }
 
@@ -150,6 +194,7 @@ class SupabaseAuthRepository implements AuthRepository {
   Future<UserEntity> updateProfile(UserEntity profile) async {
     BorrowlyLogger.event('Auth: Update Profile', parameters: {
       'fullName': profile.fullName,
+      'phone': profile.phone,
       'radius': profile.searchRadiusKm,
     });
 
@@ -165,7 +210,18 @@ class SupabaseAuthRepository implements AuthRepository {
             },
           ),
         );
-        BorrowlyLogger.info('Profile updated in Supabase auth metadata.');
+
+        // Also upsert user into public.users database table
+        await client.from('users').upsert({
+          'id': client.auth.currentUser!.id,
+          'full_name': profile.fullName,
+          'email': profile.email,
+          'phone': profile.phone,
+          'avatar_url': profile.avatarUrl,
+          'search_radius_km': profile.searchRadiusKm,
+        });
+
+        BorrowlyLogger.info('Profile and phone number updated in Supabase.');
       } catch (e, stack) {
         BorrowlyLogger.error('Supabase profile update notice', e, stack);
       }
@@ -179,6 +235,7 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signOut() async {
     BorrowlyLogger.event('Auth: Sign Out Triggered');
+    await _localStorageService.clearCachedUserProfile();
     final client = SupabaseService.client;
     if (client != null) {
       try {
@@ -193,6 +250,16 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   Future<void> _saveUserLocal(UserEntity user) async {
-    BorrowlyLogger.info('Persisting user profile locally: ${user.fullName}');
+    BorrowlyLogger.info('Persisting user profile locally in Hive: ${user.fullName}');
+    await _localStorageService.cacheUserProfile({
+      'id': user.id,
+      'email': user.email,
+      'full_name': user.fullName,
+      'avatar_url': user.avatarUrl,
+      'phone': user.phone,
+      'search_radius_km': user.searchRadiusKm,
+      'is_guest': user.isGuest,
+      'created_at': user.createdAt.toIso8601String(),
+    });
   }
 }
