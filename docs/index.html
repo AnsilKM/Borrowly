@@ -559,7 +559,7 @@
       <div class="brand-icon">B</div>
       <div class="brand-title">Borrowly</div>
     </a>
-    <a href="Borrowly.apk" download="Borrowly.apk" class="btn-header" onclick="handleDirectDownload(event, this.href)">Get App</a>
+    <a href="./Borrowly.apk" download="Borrowly.apk" class="btn-header">Get App</a>
   </header>
 
   <main>
@@ -591,7 +591,7 @@
         </p>
 
         <div class="cta-group" id="download">
-          <a href="Borrowly.apk" download="Borrowly.apk" id="downloadApkBtn" class="btn-primary" onclick="handleDirectDownload(event, this.href)">
+          <a href="./Borrowly.apk" download="Borrowly.apk" id="downloadApkBtn" class="btn-primary">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -702,20 +702,6 @@
   </footer>
 
   <script>
-    // Direct Background File Download Handler (No Page Redirect)
-    function handleDirectDownload(event, url) {
-      if (url && url.endsWith('.apk')) {
-        event.preventDefault();
-        const tempAnchor = document.createElement('a');
-        tempAnchor.href = url;
-        tempAnchor.setAttribute('download', 'Borrowly.apk');
-        tempAnchor.style.display = 'none';
-        document.body.appendChild(tempAnchor);
-        tempAnchor.click();
-        document.body.removeChild(tempAnchor);
-      }
-    }
-
     // Interactive Radius Chips in Phone Mockup
     function selectRadius(el, distanceText) {
       document.querySelectorAll('.radius-chip').forEach(c => c.classList.remove('active'));
