@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:borrowly/app/theme/app_colors.dart';
+import 'package:borrowly/app/theme/app_typography.dart';
 import 'package:borrowly/features/activity/presentation/activity_screen.dart';
 import 'package:borrowly/features/auth/presentation/screens/login_screen.dart';
 import 'package:borrowly/features/auth/presentation/screens/profile_setup_screen.dart';
@@ -67,6 +69,74 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
+    redirect: (context, state) {
+      final uri = state.uri;
+      final path = uri.path;
+
+      // Handle query parameters: ?item=123 or ?owner=456
+      final itemParam = uri.queryParameters['item'];
+      if (itemParam != null && itemParam.isNotEmpty) {
+        final targetPath = '/item/$itemParam';
+        if (path != targetPath) {
+          return targetPath;
+        }
+      }
+
+      final ownerParam = uri.queryParameters['owner'];
+      if (ownerParam != null && ownerParam.isNotEmpty) {
+        final targetPath = '/owner/$ownerParam';
+        if (path != targetPath) {
+          return targetPath;
+        }
+      }
+
+      // Handle /Borrowly root path redirect
+      if (path == '/Borrowly' || path == '/Borrowly/') {
+        return AppRoutes.home;
+      }
+
+      return null;
+    },
+    errorBuilder: (context, state) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Borrowly'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go(AppRoutes.home),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.search_off_outlined, size: 64, color: AppColors.primary),
+              const SizedBox(height: 16),
+              Text(
+                'Page Not Found',
+                style: AppTypography.headingLarge(isDark),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Requested URL: ${state.uri}',
+                style: AppTypography.bodySmall(isDark),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => context.go(AppRoutes.home),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Return to Home'),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
     routes: [
       GoRoute(
         path: AppRoutes.splash,

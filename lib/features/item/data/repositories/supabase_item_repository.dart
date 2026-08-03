@@ -337,6 +337,7 @@ class SupabaseItemRepository implements ItemRepository {
 
   @override
   Future<ItemEntity?> getItemById(String id) async {
+    if (id.isEmpty) return null;
     BorrowlyLogger.event('Item: Fetch Item Details', parameters: {'itemId': id});
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
@@ -349,6 +350,16 @@ class SupabaseItemRepository implements ItemRepository {
         BorrowlyLogger.warning('getItemById error: $e');
       }
     }
+
+    // Local storage fallback for offline / test items
+    try {
+      final cachedItems = LocalStorageService().getCachedNearbyItems();
+      for (final itemMap in cachedItems) {
+        if (itemMap['id'] == id) {
+          return _mapSupabaseRowToEntity(itemMap);
+        }
+      }
+    } catch (_) {}
 
     return null;
   }

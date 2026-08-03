@@ -172,7 +172,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                                     child: IconButton(
                                       icon: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
                                       onPressed: () async {
-                                        final shareUrl = 'borrowly://item/${item.id}';
+                                        final shareUrl = 'https://AnsilKM.github.io/Borrowly/?item=${item.id}';
                                         final shareText = 'Check out "${item.title}" available for borrow on Borrowly!\n$shareUrl';
                                         await Share.share(
                                           shareText,

@@ -61,7 +61,7 @@ class OwnerProfileScreen extends ConsumerWidget {
               color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
             onPressed: () async {
-              final shareUrl = 'borrowly://owner/$ownerId';
+              final shareUrl = 'https://AnsilKM.github.io/Borrowly/?owner=$ownerId';
               await Share.share(
                 'Check out $displayName\'s profile and listings on Borrowly!\n$shareUrl',
                 subject: '$displayName\'s Borrowly Profile',
