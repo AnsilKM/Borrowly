@@ -128,13 +128,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
 
-            // Chat Input Bar (With IME Keyboard Padding)
-            AnimatedPadding(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeOut,
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-              child: Container(
-                padding: const EdgeInsets.all(AppSpacing.sm),
+            // Chat Input Bar
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkSurface : AppColors.surface,
                   border: Border(
@@ -176,10 +172,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }

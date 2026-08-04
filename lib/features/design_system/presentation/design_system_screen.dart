@@ -159,14 +159,14 @@ class DesignSystemScreen extends ConsumerWidget {
             ResponsiveLayout(
               mobile: Column(
                 children: [
-                  _SampleItemCard(title: 'DeWalt Cordless Drill (Mobile View)', distance: '1 km', price: '\$5/day', isDark: isDark),
+                  _SampleItemCard(title: 'DeWalt Cordless Drill (Mobile View)', distance: '1 km', price: '₹5/day', isDark: isDark),
                   const SizedBox(height: AppSpacing.sm),
                   _SampleItemCard(title: 'Camping Tent 4-Person', distance: '2 km', price: 'Free', isDark: isDark),
                 ],
               ),
               tablet: Row(
                 children: [
-                  Expanded(child: _SampleItemCard(title: 'DeWalt Cordless Drill (Tablet View)', distance: '1 km', price: '\$5/day', isDark: isDark)),
+                  Expanded(child: _SampleItemCard(title: 'DeWalt Cordless Drill (Tablet View)', distance: '1 km', price: '₹5/day', isDark: isDark)),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(child: _SampleItemCard(title: 'Camping Tent 4-Person', distance: '2 km', price: 'Free', isDark: isDark)),
                 ],

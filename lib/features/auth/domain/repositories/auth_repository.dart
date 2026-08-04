@@ -13,6 +13,9 @@ abstract class AuthRepository {
   /// Update user profile details (Name, Phone, Distance Radius)
   Future<UserEntity> updateProfile(UserEntity profile);
 
+  /// Sign in using Email & Password
+  Future<UserEntity> signInWithEmail({required String email, required String password});
+
   /// Sign out current session
   Future<void> signOut();
 

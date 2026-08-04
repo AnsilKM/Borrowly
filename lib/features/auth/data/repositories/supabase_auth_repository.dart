@@ -233,6 +233,36 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<UserEntity> signInWithEmail({required String email, required String password}) async {
+    BorrowlyLogger.event('Auth: Email Sign-In Initiated', parameters: {'email': email});
+    final client = SupabaseService.client;
+    if (client != null && SupabaseService.isConfigured) {
+      final res = await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (res.user != null) {
+        final u = res.user!;
+        final user = UserEntity(
+          id: u.id,
+          email: u.email ?? email,
+          fullName: u.userMetadata?['full_name'] ?? u.email?.split('@').first ?? 'Borrowly User',
+          avatarUrl: u.userMetadata?['avatar_url'],
+          searchRadiusKm: (u.userMetadata?['search_radius_km'] as num?)?.toInt() ?? 5,
+          isGuest: false,
+          createdAt: DateTime.now(),
+        );
+        await _saveUserLocal(user);
+        _authStateController.add(user);
+        BorrowlyLogger.event('Auth: Email Sign-In Success', parameters: {'userId': user.id, 'email': user.email});
+        return user;
+      }
+    }
+    throw Exception('Failed to sign in with email/password. Please check credentials.');
+  }
+
+  @override
   Future<void> signOut() async {
     BorrowlyLogger.event('Auth: Sign Out Triggered');
     await _localStorageService.clearCachedUserProfile();

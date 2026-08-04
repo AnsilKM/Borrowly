@@ -146,13 +146,65 @@ class LoginScreen extends ConsumerWidget {
                     }
                   },
                 ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: AppSpacing.xs + 2),
 
-              Text(
-                'By continuing, you agree to Borrowly\'s Community Guidelines.',
-                textAlign: TextAlign.center,
-                style: AppTypography.bodySmall(isDark),
+                // Manual Email/Password Sign In (For Test/Manual Supabase Accounts)
+                TextButton.icon(
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: Colors.transparent,
+                      builder: (context) => const _EmailSignInBottomSheet(),
+                    );
+                  },
+                  icon: const Icon(Icons.email_outlined, size: 18, color: AppColors.primary),
+                  label: Text(
+                    'Sign in with Email & Password',
+                    style: AppTypography.bodySmall(isDark).copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xs),
+
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    'By continuing, you agree to Borrowly\'s ',
+                    style: AppTypography.bodySmall(isDark),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push(AppRoutes.terms),
+                    child: Text(
+                      'Terms & Conditions',
+                      style: AppTypography.bodySmall(isDark).copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    ' & ',
+                    style: AppTypography.bodySmall(isDark),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.push(AppRoutes.privacy),
+                    child: Text(
+                      'Privacy Policy',
+                      style: AppTypography.bodySmall(isDark).copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -200,6 +252,120 @@ class _FeatureCard extends StatelessWidget {
                 Text(subtitle, style: AppTypography.bodySmall(isDark)),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmailSignInBottomSheet extends ConsumerStatefulWidget {
+  const _EmailSignInBottomSheet();
+
+  @override
+  ConsumerState<_EmailSignInBottomSheet> createState() => _EmailSignInBottomSheetState();
+}
+
+class _EmailSignInBottomSheetState extends ConsumerState<_EmailSignInBottomSheet> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      BorrowlyToast.show(context, 'Please enter email and password', isError: true);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await ref.read(authProvider.notifier).signInWithEmail(email: email, password: password);
+      if (mounted) {
+        Navigator.pop(context);
+        context.go(AppRoutes.home);
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        BorrowlyToast.show(context, msg, isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: bottomInset + AppSpacing.lg,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkBackground : AppColors.background,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Sign In with Supabase Account',
+                style: AppTypography.headingMedium(isDark),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            style: AppTypography.bodyMedium(isDark),
+            decoration: InputDecoration(
+              labelText: 'Email Address',
+              prefixIcon: const Icon(Icons.email_outlined, size: 20),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            style: AppTypography.bodyMedium(isDark),
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: const Icon(Icons.lock_outline, size: 20),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          BorrowlyButton(
+            label: _isLoading ? 'Signing In...' : 'Sign In',
+            isFullWidth: true,
+            isLoading: _isLoading,
+            onPressed: _handleSignIn,
           ),
         ],
       ),

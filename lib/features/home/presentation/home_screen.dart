@@ -39,7 +39,7 @@ class HomeScreen extends ConsumerWidget {
         ? user.fullName.split(' ').first
         : 'Neighbor';
 
-    final distanceOptions = [1, 3, 5, 10, 15];
+    final distanceOptions = [1, 2, 3, 5];
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
@@ -415,17 +415,31 @@ class HomeScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Nearby Items',
-                        style: AppTypography.headingMedium(isDark).copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'Nearby Items',
+                            style: AppTypography.headingMedium(isDark).copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          BorrowlyBadge(
+                            label: '$selectedRadius km',
+                            variant: BorrowlyBadgeVariant.distance,
+                          ),
+                        ],
                       ),
-                      BorrowlyBadge(
-                        label: 'Within $selectedRadius km',
-                        variant: BorrowlyBadgeVariant.distance,
-                        icon: const Icon(Icons.near_me_rounded),
+                      GestureDetector(
+                        onTap: () => context.push(AppRoutes.productList),
+                        child: Text(
+                          'See All →',
+                          style: AppTypography.bodySmall(isDark).copyWith(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),

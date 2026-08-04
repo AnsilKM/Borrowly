@@ -42,7 +42,7 @@ class ItemEntity extends Equatable {
     required this.createdAt,
   });
 
-  String get formattedPrice => isFree ? 'FREE' : '\$${dailyPrice.toStringAsFixed(0)}/day';
+  String get formattedPrice => isFree ? 'FREE' : '₹${dailyPrice.toStringAsFixed(0)}/day';
 
   String get formattedDistance => '${distanceKm.toStringAsFixed(1)} km away';
 

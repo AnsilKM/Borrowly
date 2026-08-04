@@ -311,7 +311,7 @@ class _RequestBorrowBottomSheetState extends ConsumerState<RequestBorrowBottomSh
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text('Refundable Deposit:', style: AppTypography.bodyMedium(isDark)),
-                            Text('\$${widget.item.depositAmount.toStringAsFixed(0)}', style: AppTypography.headingSmall(isDark)),
+                            Text('₹${widget.item.depositAmount.toStringAsFixed(0)}', style: AppTypography.headingSmall(isDark)),
                           ],
                         ),
                       ],
@@ -321,7 +321,7 @@ class _RequestBorrowBottomSheetState extends ConsumerState<RequestBorrowBottomSh
                         children: [
                           Text('Total Amount:', style: AppTypography.headingMedium(isDark)),
                           Text(
-                            widget.item.isFree ? 'FREE' : '\$${_totalPrice.toStringAsFixed(0)}',
+                            widget.item.isFree ? 'FREE' : '₹${_totalPrice.toStringAsFixed(0)}',
                             style: AppTypography.headingLarge(isDark).copyWith(
                               color: widget.item.isFree ? AppColors.success : AppColors.primaryDark,
                             ),

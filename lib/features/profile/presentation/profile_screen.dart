@@ -39,7 +39,7 @@ class ProfileScreen extends ConsumerWidget {
     final userPhone = _formatPhoneNumber(user?.phone);
 
     final borrowerRequestsAsync = authState.isGuest ? null : ref.watch(userBorrowRequestsProvider(false));
-    final nearbyItemsAsync = authState.isGuest ? null : ref.watch(nearbyItemsProvider);
+    final userListingsAsync = authState.isGuest ? null : ref.watch(userListingsProvider);
 
     final borrowsCountStr = authState.isGuest
         ? '0'
@@ -49,8 +49,8 @@ class ProfileScreen extends ConsumerWidget {
               error: (_, __) => '0',
             ) ?? '0');
 
-    final userItems = nearbyItemsAsync?.when(
-          data: (items) => items.where((i) => i.ownerId == user?.id || (user != null && i.ownerName == user.fullName)).toList(),
+    final userItems = userListingsAsync?.when(
+          data: (items) => items,
           loading: () => null,
           error: (_, __) => null,
         );
@@ -88,121 +88,149 @@ class ProfileScreen extends ConsumerWidget {
               BorrowlyCard(
                 variant: BorrowlyCardVariant.warm,
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
+                child: Stack(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        BorrowlyImagePickerBottomSheet.show(
-                          context,
-                          title: 'Update Profile Picture',
-                          subtitle: 'Choose a photo for your neighbor profile',
-                          initialPreviewPath: user?.avatarUrl,
-                          onConfirmSave: (path) async {
-                            await ref.read(authProvider.notifier).updateProfilePicture(path);
-                            if (context.mounted) {
-                              BorrowlyToast.show(
-                                context,
-                                'Profile picture updated successfully!',
-                                icon: Icons.check_circle_rounded,
-                              );
-                            }
-                          },
-                        );
-                      },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary, width: 2),
-                              boxShadow: AppShadows.medium,
-                            ),
-                            child: CircleAvatar(
-                              backgroundColor: Colors.white,
-                              radius: 38,
-                              backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                                  ? (user.avatarUrl!.startsWith('http')
-                                      ? NetworkImage(user.avatarUrl!) as ImageProvider
-                                      : FileImage(File(user.avatarUrl!)))
-                                  : null,
-                              child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
-                                  ? Text(
-                                      userName[0].toUpperCase(),
-                                      style: const TextStyle(
-                                        color: AppColors.primaryDark,
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    )
-                                  : null,
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
+                    if (!authState.isGuest)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => context.push(AppRoutes.profileSetup),
                             child: Container(
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.primary,
+                                color: AppColors.primary.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
                               ),
                               child: const Icon(
-                                Icons.camera_alt_rounded,
-                                color: Colors.white,
-                                size: 14,
+                                Icons.edit_rounded,
+                                color: AppColors.primary,
+                                size: 18,
                               ),
                             ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm + 2),
-                    Text(
-                      userName,
-                      style: AppTypography.headingLarge(isDark).copyWith(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      userEmail,
-                      style: AppTypography.bodyMedium(isDark).copyWith(
-                        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Column(
                       children: [
-                        const Icon(Icons.phone_rounded, size: 14, color: AppColors.primary),
-                        const SizedBox(width: 4),
-                        Text(
-                          userPhone,
-                          style: AppTypography.bodyMedium(isDark).copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: user?.phone != null && user!.phone!.isNotEmpty
-                                ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
-                                : AppColors.textMuted,
+                        GestureDetector(
+                          onTap: () {
+                            BorrowlyImagePickerBottomSheet.show(
+                              context,
+                              title: 'Update Profile Picture',
+                              subtitle: 'Choose a photo for your neighbor profile',
+                              initialPreviewPath: user?.avatarUrl,
+                              onConfirmSave: (path) async {
+                                await ref.read(authProvider.notifier).updateProfilePicture(path);
+                                if (context.mounted) {
+                                  BorrowlyToast.show(
+                                    context,
+                                    'Profile picture updated successfully!',
+                                    icon: Icons.check_circle_rounded,
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.primary, width: 2),
+                                  boxShadow: AppShadows.medium,
+                                ),
+                                child: CircleAvatar(
+                                  backgroundColor: Colors.white,
+                                  radius: 38,
+                                  backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                                      ? (user.avatarUrl!.startsWith('http')
+                                          ? NetworkImage(user.avatarUrl!) as ImageProvider
+                                          : FileImage(File(user.avatarUrl!)))
+                                      : null,
+                                  child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
+                                      ? Text(
+                                          userName[0].toUpperCase(),
+                                          style: const TextStyle(
+                                            color: AppColors.primaryDark,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 1.5),
+                                  ),
+                                  child: const Icon(
+                                    Icons.camera_alt_rounded,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        BorrowlyBadge(
-                          label: authState.isGuest ? 'Guest Account' : 'Verified Member',
-                          variant: authState.isGuest ? BorrowlyBadgeVariant.warning : BorrowlyBadgeVariant.success,
+                        const SizedBox(height: AppSpacing.sm + 2),
+                        Text(
+                          userName,
+                          style: AppTypography.headingLarge(isDark).copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        const SizedBox(width: AppSpacing.xs + 2),
-                        BorrowlyBadge(
-                          label: '${user?.searchRadiusKm ?? 5} km Radius',
-                          variant: BorrowlyBadgeVariant.distance,
-                          icon: const Icon(Icons.near_me_rounded),
+                        const SizedBox(height: 2),
+                        Text(
+                          userEmail,
+                          style: AppTypography.bodyMedium(isDark).copyWith(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.phone_rounded, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              userPhone,
+                              style: AppTypography.bodyMedium(isDark).copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: user?.phone != null && user!.phone!.isNotEmpty
+                                    ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
+                                    : AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            BorrowlyBadge(
+                              label: authState.isGuest ? 'Guest Account' : 'Verified Member',
+                              variant: authState.isGuest ? BorrowlyBadgeVariant.warning : BorrowlyBadgeVariant.success,
+                            ),
+                            const SizedBox(width: AppSpacing.xs + 2),
+                            BorrowlyBadge(
+                              label: '${user?.searchRadiusKm ?? 5} km Radius',
+                              variant: BorrowlyBadgeVariant.distance,
+                              icon: const Icon(Icons.near_me_rounded),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -242,6 +270,48 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Account & Legal Options Menu Card
+              BorrowlyCard(
+                variant: BorrowlyCardVariant.flat,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                child: Column(
+                  children: [
+                    _ProfileMenuItem(
+                      icon: Icons.inventory_2_outlined,
+                      title: 'My Listings',
+                      subtitle: authState.isGuest
+                          ? 'Sign in to view your posted items'
+                          : '${userItems?.length ?? 0} active listing(s)',
+                      isDark: isDark,
+                      onTap: () {
+                        if (authState.isGuest) {
+                          context.push(AppRoutes.login);
+                        } else {
+                          context.push(AppRoutes.myListings);
+                        }
+                      },
+                    ),
+                    Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
+                    _ProfileMenuItem(
+                      icon: Icons.description_outlined,
+                      title: 'Terms & Conditions',
+                      subtitle: 'Usage rules & physical handover policy',
+                      isDark: isDark,
+                      onTap: () => context.push(AppRoutes.terms),
+                    ),
+                    Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
+                    _ProfileMenuItem(
+                      icon: Icons.privacy_tip_outlined,
+                      title: 'Privacy Policy',
+                      subtitle: 'How your neighborhood data is protected',
+                      isDark: isDark,
+                      onTap: () => context.push(AppRoutes.privacy),
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(height: AppSpacing.lg),
 
               // Actions
@@ -253,14 +323,6 @@ class ProfileScreen extends ConsumerWidget {
                   onPressed: () => context.push(AppRoutes.login),
                 ),
               ] else ...[
-                BorrowlyButton(
-                  label: 'Edit Profile & Phone Number',
-                  variant: BorrowlyButtonVariant.secondary,
-                  isFullWidth: true,
-                  icon: const Icon(Icons.edit_location_alt_rounded),
-                  onPressed: () => context.push(AppRoutes.profileSetup),
-                ),
-                const SizedBox(height: AppSpacing.sm),
                 BorrowlyButton(
                   label: 'Logout Session',
                   variant: BorrowlyButtonVariant.outline,
@@ -363,6 +425,49 @@ class _StatCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProfileMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  const _ProfileMenuItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: AppTypography.headingSmall(isDark).copyWith(fontSize: 15),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: AppTypography.bodySmall(isDark),
+      ),
+      trailing: Icon(
+        Icons.chevron_right_rounded,
+        color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+      ),
+      onTap: onTap,
     );
   }
 }

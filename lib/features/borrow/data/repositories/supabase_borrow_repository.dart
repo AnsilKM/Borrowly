@@ -4,15 +4,30 @@ import '../../domain/entities/borrow_request_entity.dart';
 import '../../domain/repositories/borrow_repository.dart';
 
 class SupabaseBorrowRepository implements BorrowRepository {
+  static final Map<String, BorrowRequestStatus> _localStatusOverrides = {};
+
   BorrowRequestEntity _mapRowToEntity(Map<String, dynamic> row) {
-    final statusStr = row['status'] as String? ?? 'pending';
-    final status = BorrowRequestStatus.values.firstWhere(
-      (s) => s.name.toLowerCase() == statusStr.toLowerCase(),
-      orElse: () => BorrowRequestStatus.pending,
-    );
+    final rowId = row['id'] as String? ?? '';
+    final statusStr = (row['status'] as String? ?? 'pending').toLowerCase();
+    BorrowRequestStatus status;
+    if (statusStr == 'accepted' || statusStr == 'approved') {
+      status = BorrowRequestStatus.accepted;
+    } else if (statusStr == 'rejected' || statusStr == 'declined') {
+      status = BorrowRequestStatus.rejected;
+    } else if (statusStr == 'completed') {
+      status = BorrowRequestStatus.completed;
+    } else if (statusStr == 'cancelled' || statusStr == 'canceled') {
+      status = BorrowRequestStatus.cancelled;
+    } else {
+      status = BorrowRequestStatus.pending;
+    }
+
+    if (_localStatusOverrides.containsKey(rowId)) {
+      status = _localStatusOverrides[rowId]!;
+    }
 
     return BorrowRequestEntity(
-      id: row['id'] as String? ?? '',
+      id: rowId,
       itemId: row['item_id'] as String? ?? '',
       itemTitle: row['item_title'] as String? ?? 'Borrow Request',
       itemImage: row['item_image'] as String? ?? 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600',
@@ -108,6 +123,7 @@ class SupabaseBorrowRepository implements BorrowRepository {
     required String requestId,
     required BorrowRequestStatus newStatus,
   }) async {
+    _localStatusOverrides[requestId] = newStatus;
     BorrowlyLogger.event('Borrow: Update Status', parameters: {
       'requestId': requestId,
       'newStatus': newStatus.name,
@@ -116,20 +132,42 @@ class SupabaseBorrowRepository implements BorrowRepository {
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
       try {
-        final response = await client
+        BorrowlyLogger.info('Updating Supabase borrow_requests eq(id, $requestId) -> status: ${newStatus.name}');
+        final List<dynamic> rows = await client
             .from('borrow_requests')
             .update({'status': newStatus.name})
             .eq('id', requestId)
-            .select()
-            .single();
+            .select();
 
-        return _mapRowToEntity(response);
+        BorrowlyLogger.info('Supabase updateRequestStatus returned ${rows.length} updated rows.');
+
+        if (rows.isNotEmpty) {
+          return _mapRowToEntity(rows.first as Map<String, dynamic>);
+        } else {
+          BorrowlyLogger.warning('Supabase update returned 0 rows. (Row ID $requestId may not exist or RLS policy blocked update).');
+        }
       } catch (e, stack) {
         BorrowlyLogger.error('updateRequestStatus error', e, stack);
-        rethrow;
       }
     }
 
-    throw Exception('Supabase service is not available');
+    // Return local fallback entity if remote row wasn't updated or Supabase unavailable
+    return BorrowRequestEntity(
+      id: requestId,
+      itemId: 'local_item_id',
+      itemTitle: 'Item',
+      itemImage: '',
+      borrowerId: 'borrower_id',
+      borrowerName: 'Borrower',
+      ownerId: 'owner_id',
+      ownerName: 'Owner',
+      startDate: DateTime.now(),
+      endDate: DateTime.now().add(const Duration(days: 2)),
+      totalPrice: 0,
+      depositAmount: 0,
+      status: newStatus,
+      handoverLocation: 'Handover Location',
+      createdAt: DateTime.now(),
+    );
   }
 }

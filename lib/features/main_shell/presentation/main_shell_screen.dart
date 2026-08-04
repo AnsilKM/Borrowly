@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:borrowly/app/router/routes.dart';
 import 'package:borrowly/app/theme/app_colors.dart';
+import 'package:borrowly/core/utils/borrowly_logger.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/features/main_shell/presentation/widgets/floating_navigation_bar.dart';
 import 'package:borrowly/features/notification/presentation/providers/notification_provider.dart';
@@ -52,14 +53,34 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
   }
 
   Future<bool> _onBackInvoked() async {
-    // 1. If top route can pop (e.g. detail screen open), pop top route
-    if (GoRouter.of(context).canPop()) {
+    final location = GoRouter.of(context).routeInformationProvider.value.uri.path;
+    final routerCanPop = GoRouter.of(context).canPop();
+    final shellIndex = widget.navigationShell.currentIndex;
+
+    BorrowlyLogger.info(
+      'Shell: _onBackInvoked | location=$location | '
+      'routerCanPop=$routerCanPop | shellIndex=$shellIndex',
+    );
+
+    // 0. If the current route is an external screen opened via deep link
+    //    (e.g. /item/:id or /owner/:id navigated via go(), not push()),
+    //    go back to Home instead of triggering the shell exit logic.
+    if (location.startsWith('/item/') || location.startsWith('/owner/')) {
+      BorrowlyLogger.info('Shell: Deep link route detected → going to home');
+      context.go(AppRoutes.home);
+      return true;
+    }
+
+    // 1. If top route can pop (e.g. detail screen open via push), pop top route
+    if (routerCanPop) {
+      BorrowlyLogger.info('Shell: routerCanPop=true → popping top route');
       context.pop();
       return true;
     }
 
     // 2. If on any non-Home tab (Activity, Messages, Profile), return to Home tab (index 0)
-    if (widget.navigationShell.currentIndex != 0) {
+    if (shellIndex != 0) {
+      BorrowlyLogger.info('Shell: Non-home tab (index=$shellIndex) → going to home branch');
       widget.navigationShell.goBranch(0);
       return true;
     }
@@ -68,6 +89,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
     final now = DateTime.now();
     if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
       _lastBackPressTime = now;
+      BorrowlyLogger.info('Shell: Home tab, first back press → showing exit toast');
       if (mounted) {
         BorrowlyToast.show(
           context,
@@ -78,6 +100,7 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
       return true;
     }
 
+    BorrowlyLogger.info('Shell: Home tab, second back press → allowing app exit');
     return false; // Second press on Home -> allow exit
   }
 
@@ -100,10 +123,14 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
     );
 
     return BackButtonListener(
-      onBackButtonPressed: _onBackInvoked,
+      onBackButtonPressed: () {
+        BorrowlyLogger.info('Shell: BackButtonListener fired');
+        return _onBackInvoked();
+      },
       child: PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
+          BorrowlyLogger.info('Shell: PopScope.onPopInvokedWithResult | didPop=$didPop');
           if (!didPop) {
             _onBackInvoked();
           }

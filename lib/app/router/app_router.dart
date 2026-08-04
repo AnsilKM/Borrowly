@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:borrowly/core/utils/borrowly_logger.dart';
 import 'package:borrowly/app/theme/app_colors.dart';
 import 'package:borrowly/app/theme/app_typography.dart';
 import 'package:borrowly/features/activity/presentation/activity_screen.dart';
@@ -20,6 +21,8 @@ import 'package:borrowly/features/profile/presentation/profile_screen.dart';
 import 'package:borrowly/features/search/presentation/search_screen.dart';
 import 'package:borrowly/features/splash/presentation/splash_screen.dart';
 import 'package:borrowly/features/wishlist/presentation/screens/wishlist_screen.dart';
+import 'package:borrowly/core/widgets/legal_webview_screen.dart';
+import 'package:borrowly/features/item/presentation/screens/product_list_screen.dart';
 import 'routes.dart';
 
 
@@ -63,6 +66,10 @@ CustomTransitionPage<void> _buildSlideTransitionPage({
   );
 }
 
+/// Stores a deep link path that arrived while the app was cold-starting.
+/// The SplashScreen reads this and resolves navigation after auth is ready.
+final pendingDeepLinkProvider = StateProvider<String?>((ref) => null);
+
 final routerProvider = Provider<GoRouter>((ref) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -75,44 +82,98 @@ final routerProvider = Provider<GoRouter>((ref) {
       final host = uri.host;
       final path = uri.path;
 
+      // Known internal app routes that should NEVER be treated as deep links.
+      // The redirect must not intercept internal context.push/go calls.
+      final isInternalRoute =
+          path.startsWith('/chat/') ||
+          path.startsWith('/item/') ||
+          path.startsWith('/owner/') ||
+          path.startsWith('/activity') ||
+          path.startsWith('/profile') ||
+          path.startsWith('/search') ||
+          path.startsWith('/wishlist') ||
+          path.startsWith('/notifications') ||
+          path.startsWith('/add-item') ||
+          path.startsWith('/chat-list') ||
+          path == AppRoutes.home;
+
+      // Log incoming link only if it carries external info worth tracing.
+      if (scheme == 'borrowly' || (!isInternalRoute && uri.queryParameters.isNotEmpty)) {
+        BorrowlyLogger.event('DeepLink: Received Link', parameters: {
+          'fullUri': uri.toString(),
+          'scheme': scheme,
+          'host': host,
+          'path': path,
+          'queryParams': uri.queryParameters,
+          'isInternalRoute': isInternalRoute,
+        });
+      }
+
+      // Resolve the deep link target path.
+      String? resolvedTarget;
+
       // 1. Handle custom scheme: borrowly://item/<id> or borrowly://owner/<id>
+      //    Custom scheme links always come from Android OS, never from internal navigation.
       if (scheme == 'borrowly') {
         if (host == 'item') {
           final id = path.replaceAll('/', '');
           if (id.isNotEmpty) {
-            return '/item/$id';
+            resolvedTarget = '/item/$id';
+            BorrowlyLogger.info('🔗 DeepLink Parsed (Custom Scheme Item): $resolvedTarget');
           }
         } else if (host == 'owner') {
           final id = path.replaceAll('/', '');
           if (id.isNotEmpty) {
-            return '/owner/$id';
+            resolvedTarget = '/owner/$id';
+            BorrowlyLogger.info('🔗 DeepLink Parsed (Custom Scheme Owner): $resolvedTarget');
           }
         }
       }
 
-      // 2. Already on target routes
-      if (path.startsWith('/item/') || path.startsWith('/owner/')) {
-        return null;
-      }
-
-      // 3. Handle query parameters: ?item=123 or ?owner=456
-      final itemParam = uri.queryParameters['item'];
-      if (itemParam != null && itemParam.isNotEmpty) {
-        final targetPath = '/item/$itemParam';
-        if (path != targetPath) {
-          return targetPath;
+      // 2. Handle HTTPS query parameters: ?item=<uuid> or ?owner=<uuid>
+      //    ONLY on non-internal routes (i.e. links arriving from GitHub Pages web app).
+      //    This prevents intercepting internal routes like /chat/:id?item=Title.
+      if (resolvedTarget == null && !isInternalRoute) {
+        final itemParam = uri.queryParameters['item'];
+        if (itemParam != null && itemParam.isNotEmpty) {
+          resolvedTarget = '/item/$itemParam';
+          BorrowlyLogger.info('🔗 DeepLink Parsed (Web Query Item): $resolvedTarget');
         }
       }
 
-      final ownerParam = uri.queryParameters['owner'];
-      if (ownerParam != null && ownerParam.isNotEmpty) {
-        final targetPath = '/owner/$ownerParam';
-        if (path != targetPath) {
-          return targetPath;
+      if (resolvedTarget == null && !isInternalRoute) {
+        final ownerParam = uri.queryParameters['owner'];
+        if (ownerParam != null && ownerParam.isNotEmpty) {
+          resolvedTarget = '/owner/$ownerParam';
+          BorrowlyLogger.info('🔗 DeepLink Parsed (Web Query Owner): $resolvedTarget');
         }
       }
 
-      // Handle /Borrowly root path redirect
+      // 3. If we have a deep link target, decide how to handle it:
+      if (resolvedTarget != null) {
+        // If app is on splash (cold start), store the link and let splash
+        // handle navigation after auth is resolved. This ensures:
+        //   a) Auth state is ready before item screen renders.
+        //   b) Home is in the back stack so back button works correctly.
+        if (path == AppRoutes.splash) {
+          ref.read(pendingDeepLinkProvider.notifier).state = resolvedTarget;
+          BorrowlyLogger.info('📌 DeepLink stored for post-auth navigation: $resolvedTarget');
+          return null; // Stay on splash, let SplashScreen handle it
+        }
+
+        // If app is already running (warm open), push the target on top of current stack
+        // so Home (or current route) remains in the back stack for system back navigation.
+        if (path != resolvedTarget) {
+          BorrowlyLogger.info('🚀 DeepLink Resolved (Warm Open Push): $resolvedTarget');
+          final target = resolvedTarget;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            GoRouter.of(context).push(target);
+          });
+          return null;
+        }
+      }
+
+      // 4. Handle /Borrowly root path redirect (GitHub Pages)
       if (path == '/Borrowly' || path == '/Borrowly/') {
         return AppRoutes.home;
       }
@@ -120,6 +181,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     errorBuilder: (context, state) {
+      BorrowlyLogger.warning('⚠️ Unmapped Route Triggered ErrorBuilder: ${state.uri}');
       final isDark = Theme.of(context).brightness == Brightness.dark;
       return Scaffold(
         appBar: AppBar(
@@ -257,6 +319,54 @@ final routerProvider = Provider<GoRouter>((ref) {
           state: state,
           child: const NotificationScreen(),
         ),
+      ),
+      GoRoute(
+        path: AppRoutes.terms,
+        pageBuilder: (context, state) => _buildSlideTransitionPage(
+          context: context,
+          state: state,
+          child: const LegalWebViewScreen(
+            title: 'Terms & Conditions',
+            url: 'https://ansilkm.github.io/Borrowly/terms.html',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.privacy,
+        pageBuilder: (context, state) => _buildSlideTransitionPage(
+          context: context,
+          state: state,
+          child: const LegalWebViewScreen(
+            title: 'Privacy Policy',
+            url: 'https://ansilkm.github.io/Borrowly/privacy.html',
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.myListings,
+        pageBuilder: (context, state) => _buildSlideTransitionPage(
+          context: context,
+          state: state,
+          child: const ProductListScreen(
+            title: 'My Listings',
+            isMyListings: true,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.productList,
+        pageBuilder: (context, state) {
+          final title = state.uri.queryParameters['title'] ?? 'Nearby Items';
+          final isMyListings = state.uri.queryParameters['my'] == 'true';
+          return _buildSlideTransitionPage(
+            context: context,
+            state: state,
+            child: ProductListScreen(
+              title: title,
+              isMyListings: isMyListings,
+            ),
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.designSystem,

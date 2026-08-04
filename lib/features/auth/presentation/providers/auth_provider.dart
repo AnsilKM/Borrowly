@@ -126,6 +126,17 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
+  Future<void> signInWithEmail({required String email, required String password}) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final user = await _authRepository.signInWithEmail(email: email, password: password);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+    } catch (e) {
+      state = AuthState(status: AuthStatus.error, errorMessage: e.toString());
+      rethrow;
+    }
+  }
+
   Future<void> continueAsGuest() async {
     state = state.copyWith(status: AuthStatus.loading);
     final result = await _continueAsGuestUseCase(const NoParams());

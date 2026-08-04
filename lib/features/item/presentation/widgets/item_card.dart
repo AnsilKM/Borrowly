@@ -92,10 +92,10 @@ class ItemCard extends ConsumerWidget {
                       ),
                     ),
 
-                    // Distance Badge (Top Left - Translucent Dark Pill)
+                    // Distance Badge (Bottom Left - Translucent Dark Pill)
                     Positioned(
-                      top: 10,
-                      left: 10,
+                      bottom: 8,
+                      left: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(

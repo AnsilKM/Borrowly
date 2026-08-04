@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:borrowly/app/router/app_router.dart';
 import 'package:borrowly/app/router/routes.dart';
 import 'package:borrowly/app/theme/app_colors.dart';
 import 'package:borrowly/app/theme/app_spacing.dart';
 import 'package:borrowly/app/theme/app_typography.dart';
+import 'package:borrowly/core/utils/borrowly_logger.dart';
+import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  bool _navigationScheduled = false;
 
   @override
   void initState() {
@@ -45,13 +49,31 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     ));
 
     _controller.forward();
+  }
 
-    // Auto navigate to Home screen smoothly after crisp splash presentation
-    Future.delayed(const Duration(milliseconds: 1000), () {
-      if (mounted) {
-        context.go(AppRoutes.home);
-      }
-    });
+  void _navigateAfterAuth() {
+    if (!mounted || _navigationScheduled) return;
+    final authState = ref.read(authProvider);
+    // Only navigate when auth has resolved (not initial or loading)
+    if (authState.status == AuthStatus.initial || authState.status == AuthStatus.loading) return;
+
+    _navigationScheduled = true;
+    final pendingLink = ref.read(pendingDeepLinkProvider);
+
+    if (pendingLink != null && pendingLink.isNotEmpty) {
+      // Clear the pending link before navigating
+      ref.read(pendingDeepLinkProvider.notifier).state = null;
+      BorrowlyLogger.info('🚀 SplashScreen: Navigating to home + pushing deep link: $pendingLink');
+      // Go to home first (puts home in back stack), then push the deep link target
+      final router = ref.read(routerProvider);
+      router.go(AppRoutes.home);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        router.push(pendingLink);
+      });
+    } else {
+      BorrowlyLogger.info('🏠 SplashScreen: Navigating to home (no pending deep link)');
+      ref.read(routerProvider).go(AppRoutes.home);
+    }
   }
 
   @override
@@ -63,6 +85,15 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Watch auth state - triggers rebuild when auth resolves.
+    // _navigateAfterAuth will skip if loading/initial, fire when ready.
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.status != AuthStatus.initial && next.status != AuthStatus.loading) {
+        // Ensure minimum splash display time of 1 second before navigating.
+        Future.delayed(const Duration(milliseconds: 1000), _navigateAfterAuth);
+      }
+    });
 
     return Scaffold(
       body: Container(

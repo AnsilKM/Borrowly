@@ -5,13 +5,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'package:borrowly/app/router/routes.dart';
 import 'package:borrowly/app/theme/app_colors.dart';
 import 'package:borrowly/app/theme/app_spacing.dart';
 import 'package:borrowly/app/theme/app_typography.dart';
+import 'package:borrowly/core/utils/borrowly_logger.dart';
 import 'package:borrowly/core/widgets/borrowly_badge.dart';
 import 'package:borrowly/core/widgets/borrowly_button.dart';
 import 'package:borrowly/core/widgets/borrowly_card.dart';
 import 'package:borrowly/core/widgets/borrowly_empty_state.dart';
+import 'package:borrowly/core/widgets/borrowly_image_preview_modal.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 import 'package:borrowly/features/borrow/presentation/widgets/request_borrow_bottom_sheet.dart';
@@ -25,11 +28,42 @@ final getItemDetailsUseCaseProvider = Provider<GetItemDetailsUseCase>((ref) {
 });
 
 final itemDetailsProvider = FutureProvider.family<ItemEntity?, String>((ref, itemId) async {
+  BorrowlyLogger.event('ItemDetails: Fetch Started', parameters: {'itemId': itemId});
   final usecase = ref.watch(getItemDetailsUseCaseProvider);
   final result = await usecase(itemId);
-  return result.fold(
+  final item = result.fold(
     onSuccess: (item) => item,
-    onError: (failure) => throw Exception(failure.message),
+    onError: (failure) {
+      BorrowlyLogger.error('ItemDetails: UseCase returned error', failure.message);
+      throw Exception(failure.message);
+    },
+  );
+
+  if (item != null) {
+    BorrowlyLogger.info('✅ ItemDetails: Item loaded successfully on first try → "${item.title}" (${item.id})');
+    return item;
+  }
+
+  // If null on first attempt, Supabase auth session may not have been
+  // restored yet (cold-start via deep link). Retry once after a short delay.
+  BorrowlyLogger.warning('⚠️ ItemDetails: item is null on first load (itemId=$itemId) — auth session may not be ready. Retrying in 1.5s...');
+  await Future.delayed(const Duration(milliseconds: 1500));
+
+  BorrowlyLogger.info('🔄 ItemDetails: Retrying fetch for itemId=$itemId...');
+  final retry = await usecase(itemId);
+  return retry.fold(
+    onSuccess: (retryItem) {
+      if (retryItem != null) {
+        BorrowlyLogger.info('✅ ItemDetails: Retry succeeded → "${retryItem.title}" (${retryItem.id})');
+      } else {
+        BorrowlyLogger.error('ItemDetails: Retry also returned null — item truly does not exist for itemId=$itemId');
+      }
+      return retryItem;
+    },
+    onError: (failure) {
+      BorrowlyLogger.error('ItemDetails: Retry also failed', failure.message);
+      throw Exception(failure.message);
+    },
   );
 });
 
@@ -53,87 +87,127 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final itemAsync = ref.watch(itemDetailsProvider(widget.itemId));
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
-      body: itemAsync.when(
-        data: (item) {
-          if (item == null) {
-            return Scaffold(
-              appBar: AppBar(),
-              body: const Center(
-                child: BorrowlyEmptyState(
-                  title: 'Item Not Found',
-                  description: 'This listing may have been removed by the owner.',
-                  icon: Icons.search_off_outlined,
+    return PopScope(
+      // When there is no route to pop back to (cold-start via deep link),
+      // navigate to Home instead of exiting the app.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        // Log both GoRouter and Navigator canPop for diagnostics
+        final routerCanPop = GoRouter.of(context).canPop();
+        final navCanPop = Navigator.of(context).canPop();
+        BorrowlyLogger.info(
+          'ItemDetails: System back pressed | '
+          'routerCanPop=$routerCanPop | navCanPop=$navCanPop',
+        );
+        if (routerCanPop) {
+          BorrowlyLogger.info('ItemDetails: System back → popping to previous route');
+          GoRouter.of(context).pop();
+        } else {
+          BorrowlyLogger.info('ItemDetails: System back → no back stack, going to home');
+          context.go(AppRoutes.home);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+        body: itemAsync.when(
+          data: (item) {
+            if (item == null) {
+              BorrowlyLogger.warning('⚠️ ItemDetails: Rendering "Item Not Found" screen (item=null after retry)');
+              return Scaffold(
+                appBar: AppBar(),
+                body: const Center(
+                  child: BorrowlyEmptyState(
+                    title: 'Item Not Found',
+                    description: 'This listing may have been removed by the owner.',
+                    icon: Icons.search_off_outlined,
+                  ),
                 ),
-              ),
-            );
-          }
+              );
+            }
+            BorrowlyLogger.info('🖼️ ItemDetails: Rendering item screen → "${item.title}"');
 
           return Stack(
             children: [
               SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 1. Full-Bleed Hero Image Carousel
                     Stack(
                       children: [
-                        SizedBox(
-                          height: 360,
-                          child: PageView.builder(
-                            itemCount: item.images.length,
-                            onPageChanged: (index) {
-                              setState(() {
-                                _currentImageIndex = index;
-                              });
-                            },
-                            itemBuilder: (context, index) {
-                              final imgStr = item.images[index];
-                              final isNetworkUrl = imgStr.startsWith('http://') || imgStr.startsWith('https://');
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                          child: SizedBox(
+                            height: 360,
+                            child: PageView.builder(
+                              itemCount: item.images.length,
+                              onPageChanged: (index) {
+                                setState(() {
+                                  _currentImageIndex = index;
+                                });
+                              },
+                              itemBuilder: (context, index) {
+                                final imgStr = item.images[index];
+                                final isNetworkUrl = imgStr.startsWith('http://') || imgStr.startsWith('https://');
 
-                              if (isNetworkUrl) {
-                                return CachedNetworkImage(
-                                  imageUrl: imgStr,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  placeholder: (context, url) => Container(
-                                    color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
-                                    child: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                                Widget imgWidget;
+                                if (isNetworkUrl) {
+                                  imgWidget = CachedNetworkImage(
+                                    imageUrl: imgStr,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    placeholder: (context, url) => Container(
+                                      color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                                      child: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                                    ),
+                                    errorWidget: (context, url, error) => Container(
+                                      color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                                      child: const Icon(Icons.broken_image, size: 50, color: AppColors.textMuted),
+                                    ),
+                                  );
+                                } else {
+                                  imgWidget = Image.file(
+                                    File(imgStr),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                                      child: const Icon(Icons.broken_image, size: 50, color: AppColors.textMuted),
+                                    ),
+                                  );
+                                }
+
+                                return GestureDetector(
+                                  onTap: () => BorrowlyImagePreviewModal.show(
+                                    context,
+                                    images: item.images,
+                                    initialIndex: index,
+                                    title: item.title,
                                   ),
-                                  errorWidget: (context, url, error) => Container(
-                                    color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
-                                    child: const Icon(Icons.broken_image, size: 50, color: AppColors.textMuted),
-                                  ),
+                                  child: imgWidget,
                                 );
-                              }
-
-                              return Image.file(
-                                File(imgStr),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
-                                  child: const Icon(Icons.broken_image, size: 50, color: AppColors.textMuted),
-                                ),
-                              );
-                            },
+                              },
+                            ),
                           ),
                         ),
 
-                        // Gradient bottom vignette overlay
+                        // Gradient bottom vignette overlay (IgnorePointer allows swipe gestures to pass through to PageView)
                         Positioned.fill(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.4),
-                                  Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.3),
-                                ],
+                          child: IgnorePointer(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.4),
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.3),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
@@ -150,7 +224,14 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             ),
                             child: IconButton(
                               icon: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
-                              onPressed: () => Navigator.of(context).pop(),
+                              onPressed: () {
+                                final router = GoRouter.of(context);
+                                if (router.canPop()) {
+                                  router.pop();
+                                } else {
+                                  context.go(AppRoutes.home);
+                                }
+                              },
                             ),
                           ),
                         ),
@@ -284,7 +365,7 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                                   const SizedBox(width: AppSpacing.md),
                                   if (item.depositAmount > 0)
                                     Text(
-                                      '\$${item.depositAmount.toStringAsFixed(0)} deposit',
+                                      '₹${item.depositAmount.toStringAsFixed(0)} deposit',
                                       style: AppTypography.bodyMedium(isDark).copyWith(
                                         color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                                         fontWeight: FontWeight.w600,
@@ -520,10 +601,18 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             variant: BorrowlyButtonVariant.secondary,
                             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
                             onPressed: () {
+                              final authState = ref.read(authProvider);
+                              BorrowlyLogger.event('ItemDetails: Chat Button Tapped', parameters: {
+                                'authStatus': authState.status.name,
+                                'isAuthenticated': authState.isAuthenticated,
+                                'userId': authState.user?.id ?? 'null',
+                                'isGuest': authState.isGuest,
+                              });
                               ref.read(authProvider.notifier).executeProtectedAction(
                                 context,
                                 actionTitle: 'Chat with ${item.ownerName}',
                                 onAuthenticated: () {
+                                  BorrowlyLogger.info('✅ Chat: Auth passed, pushing chat screen');
                                   context.push(
                                     '/chat/${item.id}?title=${Uri.encodeComponent(item.ownerName)}&item=${Uri.encodeComponent(item.title)}',
                                   );
@@ -539,10 +628,17 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             label: 'Request to Borrow',
                             variant: BorrowlyButtonVariant.primary,
                             onPressed: () {
+                              final authState = ref.read(authProvider);
+                              BorrowlyLogger.event('ItemDetails: Borrow Button Tapped', parameters: {
+                                'authStatus': authState.status.name,
+                                'isAuthenticated': authState.isAuthenticated,
+                                'userId': authState.user?.id ?? 'null',
+                              });
                               ref.read(authProvider.notifier).executeProtectedAction(
                                 context,
                                 actionTitle: 'Borrow "${item.title}"',
                                 onAuthenticated: () {
+                                  BorrowlyLogger.info('✅ Borrow: Auth passed, showing request sheet');
                                   RequestBorrowBottomSheet.show(context, item: item);
                                 },
                               );
@@ -566,6 +662,8 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
           ),
         ),
       ),
-    );
+    ), // closes Scaffold
+    ); // closes PopScope
   }
 }
+

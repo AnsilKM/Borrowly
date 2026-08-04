@@ -14,4 +14,8 @@ abstract class AppRoutes {
   static const String ownerProfile = '/owner/:id';
   static const String wishlist = '/wishlist';
   static const String notifications = '/notifications';
+  static const String terms = '/terms';
+  static const String privacy = '/privacy';
+  static const String myListings = '/my-listings';
+  static const String productList = '/product-list';
 }
