@@ -12,14 +12,20 @@ import 'package:borrowly/core/widgets/borrowly_button.dart';
 import 'package:borrowly/core/widgets/borrowly_card.dart';
 import 'package:borrowly/core/widgets/borrowly_image_picker_bottom_sheet.dart';
 import 'package:borrowly/core/widgets/borrowly_text_field.dart';
+import 'package:borrowly/core/location/location_provider.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
+import 'package:borrowly/features/home/presentation/widgets/location_search_bottom_sheet.dart';
 import 'package:borrowly/features/item/domain/entities/item_category.dart';
+import 'package:borrowly/features/item/domain/entities/item_entity.dart';
 import 'package:borrowly/features/item/presentation/providers/add_item_provider.dart';
 import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
+import 'item_details_screen.dart';
 
 class AddItemScreen extends ConsumerStatefulWidget {
-  const AddItemScreen({super.key});
+  final ItemEntity? editItem;
+
+  const AddItemScreen({super.key, this.editItem});
 
   @override
   ConsumerState<AddItemScreen> createState() => _AddItemScreenState();
@@ -31,6 +37,31 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
   final _customCategoryController = TextEditingController();
   final _priceController = TextEditingController(text: '5');
   final _depositController = TextEditingController(text: '20');
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.editItem != null) {
+      final item = widget.editItem!;
+      _titleController.text = item.title;
+      _descriptionController.text = item.description;
+      _priceController.text = item.dailyPrice > 0 ? item.dailyPrice.toInt().toString() : '0';
+      _depositController.text = item.depositAmount > 0 ? item.depositAmount.toInt().toString() : '0';
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final notifier = ref.read(addItemProvider.notifier);
+        notifier.setTitle(item.title);
+        notifier.setDescription(item.description);
+        notifier.setCategory(item.category);
+        notifier.setIsFree(item.isFree);
+        notifier.setDailyPrice(item.dailyPrice);
+        notifier.setDepositAmount(item.depositAmount);
+        for (final img in item.images) {
+          notifier.addImagePath(img);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -158,7 +189,10 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
-        title: Text('List Item for Neighborhood', style: AppTypography.headingMedium(isDark)),
+        title: Text(
+          widget.editItem != null ? 'Edit Listing' : 'Post an Item',
+          style: AppTypography.headingMedium(isDark),
+        ),
         centerTitle: false,
       ),
       body: SafeArea(
@@ -166,7 +200,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
           children: [
             // Scrollable Form Body
             SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,6 +240,61 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Item Handover Location Card
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final locationState = ref.watch(activeLocationProvider).valueOrNull;
+                      final fix = locationState?.fix;
+                      final activeLocalityName = fix?.localityName ?? 'Nearby Neighborhood';
+
+                      return BorrowlyCard(
+                        variant: BorrowlyCardVariant.flat,
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs + 2),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.location_on_rounded, color: AppColors.primary, size: 18),
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Handover Location',
+                                    style: AppTypography.bodySmall(isDark).copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                  Text(
+                                    activeLocalityName,
+                                    style: AppTypography.headingSmall(isDark).copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => LocationSearchBottomSheet.show(context),
+                              child: const Text('Change', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.md),
 
@@ -482,35 +571,64 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xl),
 
-                  // Clean Publish Button (Without White Container Background)
+                  // Clean Publish / Save Button
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                    child: BorrowlyButton(
-                      label: 'Publish Listing to Neighborhood',
-                      isFullWidth: true,
-                      isLoading: formState.isLoading,
-                      icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
-                      onPressed: () async {
-                        final success = await formNotifier.submitListing(
-                          ownerId: user?.id ?? '00000000-0000-0000-0000-000000000001',
-                          ownerName: user?.fullName ?? 'Local Neighbor',
-                          ownerAvatar: user?.avatarUrl,
-                          searchRadiusKm: (user?.searchRadiusKm ?? 5).toDouble(),
+                    child: Builder(
+                      builder: (context) {
+                        final isEditing = widget.editItem != null;
+                        return BorrowlyButton(
+                          label: isEditing ? 'Save Listing Changes' : 'Publish Listing to Neighborhood',
+                          isFullWidth: true,
+                          isLoading: formState.isLoading,
+                          icon: Icon(isEditing ? Icons.save_rounded : Icons.check_circle_outline_rounded, size: 20),
+                          onPressed: () async {
+                            if (isEditing) {
+                              final success = await formNotifier.updateExistingListing(widget.editItem!);
+                              if (success && context.mounted) {
+                                ref.invalidate(itemDetailsProvider(widget.editItem!.id));
+                                ref.invalidateAllItemProviders();
+
+                                BorrowlyToast.show(
+                                  context,
+                                  'Listing updated successfully!',
+                                  icon: Icons.check_circle_rounded,
+                                );
+
+                                if (Navigator.of(context).canPop()) {
+                                  Navigator.of(context).pop();
+                                } else {
+                                  context.go(AppRoutes.home);
+                                }
+                              }
+                            } else {
+                              final locationState = ref.read(activeLocationProvider).valueOrNull;
+                              final fix = locationState?.fix;
+
+                              final success = await formNotifier.submitListing(
+                                ownerId: user?.id ?? '00000000-0000-0000-0000-000000000001',
+                                ownerName: user?.fullName ?? 'Local Neighbor',
+                                ownerAvatar: user?.avatarUrl,
+                                searchRadiusKm: (user?.searchRadiusKm ?? 5).toDouble(),
+                                locationName: fix?.localityName ?? 'Nearby Neighborhood',
+                                lat: fix?.lat,
+                                lng: fix?.lng,
+                              );
+
+                              if (success && context.mounted) {
+                                ref.invalidateAllItemProviders();
+
+                                BorrowlyToast.show(
+                                  context,
+                                  'Item successfully listed in your neighborhood!',
+                                  icon: Icons.check_circle_rounded,
+                                );
+
+                                context.go(AppRoutes.home);
+                              }
+                            }
+                          },
                         );
-
-                        if (success && context.mounted) {
-                          ref.invalidate(nearbyItemsProvider);
-                          ref.invalidate(freeItemsProvider);
-                          ref.invalidate(recentlyAddedItemsProvider);
-
-                          BorrowlyToast.show(
-                            context,
-                            'Item successfully listed in your neighborhood!',
-                            icon: Icons.check_circle_rounded,
-                          );
-
-                          context.go(AppRoutes.home);
-                        }
                       },
                     ),
                   ),

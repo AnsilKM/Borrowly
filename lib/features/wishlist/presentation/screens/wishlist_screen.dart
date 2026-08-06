@@ -94,7 +94,7 @@ class WishlistScreen extends ConsumerWidget {
 
               return GridView.builder(
                 padding: const EdgeInsets.all(AppSpacing.md),
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                physics: const ClampingScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   childAspectRatio: 0.72,

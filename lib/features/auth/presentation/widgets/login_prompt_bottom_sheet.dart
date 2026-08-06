@@ -101,9 +101,12 @@ class LoginPromptBottomSheet extends ConsumerWidget {
                 onPressed: () async {
                   try {
                     await authController.signInWithGoogle();
+                    final currentUser = ref.read(authProvider).user;
                     if (context.mounted && ref.read(authProvider).isAuthenticated) {
                       Navigator.of(context).pop();
-                      context.push(AppRoutes.profileSetup);
+                      if (currentUser?.isNewUser == true) {
+                        context.push(AppRoutes.profileSetup);
+                      }
                     }
                   } catch (e) {
                     if (context.mounted) {

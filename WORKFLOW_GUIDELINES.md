@@ -4,16 +4,15 @@
 
 1. [Overview & Core Principles](#overview--core-principles)
 2. [Story-Driven Development Process](#story-driven-development-process)
-3. [Story Structure (BMAD Format for Flutter)](#story-structure-bmad-format-for-flutter)
-4. [Feature Development & Flutter Implementation Workflow](#feature-development--flutter-implementation-workflow)
-5. [Core Business Domain Workflows](#core-business-domain-workflows)
+3. [Core Business Domain Workflows](#core-business-domain-workflows)
    - [Workflow 1: Google Sign-In Authentication & Error Guarding](#workflow-1-google-sign-in-authentication--error-guarding)
    - [Workflow 2: Hyper-Local Radius Search & PostGIS Spatial Querying](#workflow-2-hyper-local-radius-search--postgis-spatial-querying)
-   - [Workflow 3: Peer-to-Peer Borrow Request & Physical Cash Handover](#workflow-3-peer-to-peer-borrow-request--physical-cash-handover)
-   - [Workflow 4: Real-Time Neighbor Messaging & Pickup Coordination](#workflow-4-real-time-neighbor-messaging--pickup-coordination)
-   - [Workflow 5: Stateful Shell Branch Navigation & Back Dispatcher](#workflow-5-stateful-shell-branch-navigation--back-dispatcher)
-6. [Story ID Conventions & Folder Structure](#story-id-conventions--folder-structure)
-7. [Best Practices for Flutter, Riverpod & Supabase](#best-practices-for-flutter-riverpod--supabase)
+   - [Workflow 3: Supabase Cloud Storage Photo Upload & Global CDN Delivery](#workflow-3-supabase-cloud-storage-photo-upload--global-cdn-delivery)
+   - [Workflow 4: Item Lifecycle & Owner Controls (Pause & Delete)](#workflow-4-item-lifecycle--owner-controls-pause--delete)
+   - [Workflow 5: Peer-to-Peer Borrow Request & Physical Cash Handover](#workflow-5-peer-to-peer-borrow-request--physical-cash-handover)
+   - [Workflow 6: Real-Time Neighbor Messaging & Pickup Coordination](#workflow-6-real-time-neighbor-messaging--pickup-coordination)
+   - [Workflow 7: Stateful Shell Branch Navigation & Back Dispatcher](#workflow-7-stateful-shell-branch-navigation--back-dispatcher)
+4. [Best Practices for Flutter, Riverpod & Supabase](#best-practices-for-flutter-riverpod--supabase)
 
 ---
 
@@ -25,12 +24,12 @@ Every feature in **Borrowly** follows a **story-driven development process** to 
 
 - **Google Sign-In Authentication ONLY** — One-tap Google authentication integrated directly with Supabase Auth (`wjgvdryrtgajenlcbjfy.supabase.co`).
 - **Structured Event Tracing (`BorrowlyLogger`)** — Every user action, authentication event, PostGIS query, and database write emits a structured event log (`🚀 [EVENT]`).
+- **Supabase Cloud Storage Uploads** — Local item photos automatically upload to public Supabase Storage bucket (`item-images`), generating HTTPS CDN URLs for global cross-device rendering.
+- **Item Owner Control & Lifecycle** — Item owners can toggle availability (`Pause Listing` vs `Mark Available`) or permanently `Delete Listing` via confirmation modal.
 - **Physical In-Person Cash Handovers** — Zero in-app gateway complexity; daily price and deposit figures are tracked in-app, with payments settled physically during pickup/return.
 - **Supabase PostGIS Spatial Queries** — Hyper-local distance calculation (< 5ms response) powered by PostgreSQL spatial indexes (`get_nearby_items`).
-- **Live Database Auto-Seeding** — Automatically populates sample neighborhood items into Supabase `items` table if empty upon first query.
-- **Story-First Development** — Complex features must define BMAD stories and user flows before writing code.
-- **Riverpod UI State Completeness** — Every screen must support four distinct async states: `data` (Content), `loading` (Skeleton Shimmer), `error` (Empty/Error State), and `refreshing`.
-- **Glassmorphic Design System** — Warm background tint (`#FDFBF7`), Outfit typography, teal primary (`#0D9488`), amber accent (`#F59E0B`), floating glass navigation bar, and top pill toasts.
+- **Unified Native Launch & Splash Screen** — Locked `#F5F2EB` launch window background and single animated Flutter `SplashScreen` widget.
+- **Locked Light Mode Aesthetics** — Warm eggshell background (`#F5F2EB`), Outfit typography, Scandinavian Sage (`#2E5A44`), amber accent (`#F59E0B`), floating glass navigation bar, and top pill toasts.
 
 ---
 
@@ -88,12 +87,42 @@ sequenceDiagram
     Repo->>Logger: BorrowlyLogger.info('Supabase returned items')
     Repo-->>Notifier: List<ItemEntity>
     Notifier-->>UI: AsyncValue.data(items)
-    UI-->>User: Render 0.72 Aspect Ratio Grid with 60/120 FPS smoothness
+    UI-->>User: Render Grid with 60/120 FPS smoothness
 ```
 
 ---
 
-### Workflow 3: Peer-to-Peer Borrow Request & Physical Cash Handover
+### Workflow 3: Supabase Cloud Storage Photo Upload & Global CDN Delivery
+
+```mermaid
+flowchart LR
+    A[Neighbor Takes Photo on Device A] -->|1. Pick Local File| B[SupabaseStorageService]
+    B -->|2. Upload Binary Bytes| C[(Supabase Storage Bucket: item-images)]
+    C -->|3. Generate Public CDN URL| D[Supabase PostgreSQL items Table]
+    D -->|4. Query Item Listing| E[Neighbor Device B: CachedNetworkImage]
+```
+
+---
+
+### Workflow 4: Item Lifecycle & Owner Controls (Pause & Delete)
+
+```mermaid
+flowchart TD
+    A[Open Item Details Screen] --> B{Is Current User Item Owner?}
+    B -->|No| C[Render Borrower Action Bar: Chat & Request to Borrow]
+    B -->|Yes| D[Render Owner Control Bar]
+    D --> E[Button 1: Pause Listing / Mark Available]
+    D --> F[Button 2: Delete Listing]
+    E -->|Tap| G[Call toggleItemAvailability in Supabase]
+    G --> H[Update is_available Flag & Show BorrowlyToast]
+    F -->|Tap| I[Show Confirmation Dialog: Delete Listing?]
+    I -->|Confirm| J[Call deleteItem in Supabase & Local Hive Cache]
+    J --> K[Show Toast & Pop Screen Back to Home]
+```
+
+---
+
+### Workflow 5: Peer-to-Peer Borrow Request & Physical Cash Handover
 
 ```mermaid
 flowchart TD
@@ -115,7 +144,7 @@ flowchart TD
 
 ---
 
-### Workflow 4: Real-Time Neighbor Messaging & Pickup Coordination
+### Workflow 6: Real-Time Neighbor Messaging & Pickup Coordination
 
 - **Chat Thread Initiation**: Automatically triggered upon creating a borrow request.
 - **Real-Time Supabase WebSockets**: Messages stream instantly via Supabase WebSocket channels.
@@ -123,7 +152,7 @@ flowchart TD
 
 ---
 
-### Workflow 5: Stateful Shell Branch Navigation & Back Dispatcher
+### Workflow 7: Stateful Shell Branch Navigation & Back Dispatcher
 
 ```mermaid
 flowchart LR
@@ -140,8 +169,10 @@ flowchart LR
 
 ## Best Practices for Flutter, Riverpod & Supabase
 
-1. **Google Auth Handling**: Always obtain both `idToken` and `accessToken` from `GoogleSignInAccount` before invoking `supabase.auth.signInWithIdToken()`. Never bypass authentication on error.
-2. **Event Logging**: Use `BorrowlyLogger.event('Domain: EventName', parameters: {...})` for tracking all user actions and async state transitions.
-3. **Physical Payment State Discipline**: State transitions must proceed strictly from `pending` $\rightarrow$ `accepted` $\rightarrow$ `active` (item handed over) $\rightarrow$ `completed` (item returned & deposit handed back).
-4. **State Hoisting**: Keep presentational widgets stateless; pass data and callbacks down from parent `ConsumerWidget`.
-5. **Background Isolate Offloading**: Use `compute()` for client-side search indexing or heavy parsing when offline.
+1. **Cloud Image Delivery**: Always route local file paths through `SupabaseStorageService.uploadItemImages(...)` before saving listings to Supabase PostgreSQL.
+2. **Item Owner Actions**: Ensure item detail screens differentiate between owner controls (`Pause` & `Delete`) and borrower actions (`Chat` & `Request to Borrow`).
+3. **Google Auth Handling**: Always obtain both `idToken` and `accessToken` from `GoogleSignInAccount` before invoking `supabase.auth.signInWithIdToken()`. Never bypass authentication on error.
+4. **Event Logging**: Use `BorrowlyLogger.event('Domain: EventName', parameters: {...})` for tracking all user actions and async state transitions.
+5. **Physical Payment State Discipline**: State transitions must proceed strictly from `pending` $\rightarrow$ `accepted` $\rightarrow$ `active` (item handed over) $\rightarrow$ `completed` (item returned & deposit handed back).
+6. **State Hoisting**: Keep presentational widgets stateless; pass data and callbacks down from parent `ConsumerWidget`.
+7. **Background Isolate Offloading**: Use `compute()` for client-side search indexing or heavy parsing when offline.

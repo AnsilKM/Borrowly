@@ -9,6 +9,7 @@ import 'package:borrowly/app/theme/app_typography.dart';
 import 'package:borrowly/core/widgets/borrowly_badge.dart';
 import 'package:borrowly/core/widgets/borrowly_button.dart';
 import 'package:borrowly/core/widgets/borrowly_card.dart';
+import 'package:borrowly/core/utils/avatar_provider_util.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
 import 'package:borrowly/features/item/presentation/widgets/item_card.dart';
@@ -31,9 +32,19 @@ class OwnerProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final nearbyItemsAsync = ref.watch(nearbyItemsProvider);
+    final authUser = ref.watch(authProvider).user;
 
-    final displayName = ownerName.isNotEmpty ? ownerName : 'Neighbor Owner';
-    final initial = displayName[0].toUpperCase();
+    final isCurrentUser = authUser != null &&
+        !authUser.isGuest &&
+        (ownerId == authUser.id || ownerId == '00000000-0000-0000-0000-000000000001');
+
+    final displayName = (isCurrentUser && authUser.fullName.isNotEmpty)
+        ? authUser.fullName
+        : (ownerName.isNotEmpty ? ownerName : 'Neighbor Owner');
+
+    final displayAvatar = isCurrentUser
+        ? authUser.displayAvatarUrl
+        : (ownerAvatar != null && ownerAvatar!.isNotEmpty ? ownerAvatar : 'assets/icons/app_icon.png');
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
@@ -72,7 +83,7 @@ class OwnerProfileScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
+          physics: const ClampingScrollPhysics(),
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,19 +105,7 @@ class OwnerProfileScreen extends ConsumerWidget {
                           child: CircleAvatar(
                             radius: 42,
                             backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                            backgroundImage: ownerAvatar != null && ownerAvatar!.isNotEmpty
-                                ? NetworkImage(ownerAvatar!)
-                                : null,
-                            child: ownerAvatar == null || ownerAvatar!.isEmpty
-                                ? Text(
-                                    initial,
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
-                                    ),
-                                  )
-                                : null,
+                            backgroundImage: getAvatarImageProvider(displayAvatar),
                           ),
                         ),
                         Positioned(

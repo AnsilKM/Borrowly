@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
   <title>Privacy Policy — Borrowly</title>
   <!-- Favicon -->
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='16' fill='%2399744A'/><circle cx='48' cy='16' r='6' fill='%23F59E0B'/><text x='30' y='45' font-family='Outfit, system-ui, sans-serif' font-size='38' font-weight='800' fill='%23FAF8F4' text-anchor='middle'>B</text></svg>">
+  <link rel="icon" type="image/png" href="app_icon.png">
   
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,15 +15,16 @@
   
   <style>
     :root {
-      --primary: #99744A;
-      --primary-dark: #856138;
-      --bg: #FAF8F4;
+      color-scheme: light !important;
+      --primary: #2E5A44;
+      --primary-dark: #1E3E2F;
+      --bg: #F5F2EB;
       --surface: #FFFFFF;
-      --text: #1E2116;
-      --text-muted: #8C867A;
-      --border: #E2DACD;
+      --text: #1C2420;
+      --text-muted: #708076;
+      --border: #D5CDBE;
       --radius-lg: 24px;
-      --shadow-md: 0 20px 40px rgba(30, 33, 22, 0.08);
+      --shadow-md: 0 20px 40px rgba(28, 36, 32, 0.08);
     }
 
     * {
@@ -65,14 +67,18 @@
     .logo-badge {
       width: 44px;
       height: 44px;
-      background-color: var(--primary);
+      background: transparent;
       border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
-      font-weight: 800;
-      font-size: 22px;
+    }
+
+    .logo-badge img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: 12px;
     }
 
     h1 {
@@ -131,7 +137,9 @@
   <div class="container">
     <div class="header">
       <div class="brand">
-        <div class="logo-badge">B</div>
+        <div class="logo-badge">
+          <img src="app_icon.png" alt="Borrowly Icon">
+        </div>
         <h1>Borrowly</h1>
       </div>
       <h2>Privacy Policy</h2>
@@ -162,9 +170,6 @@
     <p>Your session and user profile data are secured via Supabase PostgreSQL authentication with Row-Level Security (RLS) policies, alongside encrypted local Hive caching (< 5ms response time).</p>
 
     <h2>5. Contact Us</h2>
-    <p>For any privacy inquiries or account data deletion requests, please reach out through our community repository or app settings.</p>
-
-    <a href="index.html" class="back-btn">← Back to Borrowly</a>
   </div>
 </body>
 </html>

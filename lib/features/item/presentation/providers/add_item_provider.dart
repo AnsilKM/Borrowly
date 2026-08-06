@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/item_category.dart';
 import '../../domain/entities/item_entity.dart';
+import '../../domain/repositories/item_repository.dart';
 import '../../domain/usecases/add_item_usecase.dart';
+import '../../../../core/network/supabase_storage_service.dart';
 import 'home_items_provider.dart';
 
 class AddItemFormState {
@@ -62,10 +64,17 @@ final addItemUseCaseProvider = Provider<AddItemUseCase>((ref) {
   return AddItemUseCase(ref.watch(itemRepositoryProvider));
 });
 
+final addItemNotifierProvider = StateNotifierProvider.autoDispose<AddItemNotifier, AddItemFormState>((ref) {
+  final useCase = ref.watch(addItemUseCaseProvider);
+  final repo = ref.watch(itemRepositoryProvider);
+  return AddItemNotifier(useCase, repo);
+});
+
 class AddItemNotifier extends StateNotifier<AddItemFormState> {
   final AddItemUseCase _addItemUseCase;
+  final ItemRepository _itemRepository;
 
-  AddItemNotifier(this._addItemUseCase) : super(const AddItemFormState());
+  AddItemNotifier(this._addItemUseCase, this._itemRepository) : super(const AddItemFormState());
 
   void addImagePath(String path) {
     state = state.copyWith(imagePaths: [...state.imagePaths, path]);
@@ -90,12 +99,11 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
     state = const AddItemFormState();
   }
 
-  Future<bool> submitListing({
-    required String ownerId,
-    required String ownerName,
-    String? ownerAvatar,
-    required double searchRadiusKm,
-  }) async {
+  Future<bool> updateExistingListing(ItemEntity editItem) async {
+    if (state.imagePaths.isEmpty) {
+      state = state.copyWith(errorMessage: 'At least one item photo is required');
+      return false;
+    }
     if (state.title.trim().isEmpty) {
       state = state.copyWith(errorMessage: 'Please enter an item title');
       return false;
@@ -107,9 +115,58 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
 
     state = state.copyWith(isLoading: true, errorMessage: null);
 
-    final itemImages = state.imagePaths.isNotEmpty
-        ? state.imagePaths
-        : ['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600'];
+    final uploadedImages = await SupabaseStorageService.uploadItemImages(state.imagePaths);
+
+    final updatedItem = editItem.copyWith(
+      title: state.title.trim(),
+      description: state.description.trim(),
+      category: state.category,
+      dailyPrice: state.isFree ? 0.0 : state.dailyPrice,
+      isFree: state.isFree,
+      depositAmount: state.depositAmount,
+      images: uploadedImages,
+    );
+
+    BorrowlyLogger.event('Updating Item Listing', parameters: {
+      'id': updatedItem.id,
+      'title': updatedItem.title,
+    });
+
+    try {
+      await _itemRepository.updateItem(updatedItem);
+      state = const AddItemFormState();
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, errorMessage: 'Failed to update listing: $e');
+      return false;
+    }
+  }
+
+  Future<bool> submitListing({
+    required String ownerId,
+    required String ownerName,
+    String? ownerAvatar,
+    required double searchRadiusKm,
+    String? locationName,
+    double? lat,
+    double? lng,
+  }) async {
+    if (state.imagePaths.isEmpty) {
+      state = state.copyWith(errorMessage: 'At least one item photo is required');
+      return false;
+    }
+    if (state.title.trim().isEmpty) {
+      state = state.copyWith(errorMessage: 'Please enter an item title');
+      return false;
+    }
+    if (state.description.trim().isEmpty) {
+      state = state.copyWith(errorMessage: 'Please enter a description');
+      return false;
+    }
+
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final uploadedImages = await SupabaseStorageService.uploadItemImages(state.imagePaths);
 
     final newItem = ItemEntity(
       id: 'item_${DateTime.now().millisecondsSinceEpoch}',
@@ -119,13 +176,13 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
       dailyPrice: state.isFree ? 0.0 : state.dailyPrice,
       isFree: state.isFree,
       depositAmount: state.depositAmount,
-      images: itemImages,
+      images: uploadedImages,
       ownerId: ownerId,
       ownerName: ownerName,
       ownerAvatar: ownerAvatar,
       distanceKm: 0.5,
       isAvailable: true,
-      locationName: 'My Neighborhood (0.5 km)',
+      locationName: locationName ?? 'Nearby Neighborhood',
       createdAt: DateTime.now(),
     );
 
@@ -155,5 +212,7 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
 }
 
 final addItemProvider = StateNotifierProvider<AddItemNotifier, AddItemFormState>((ref) {
-  return AddItemNotifier(ref.watch(addItemUseCaseProvider));
+  final useCase = ref.watch(addItemUseCaseProvider);
+  final repo = ref.watch(itemRepositoryProvider);
+  return AddItemNotifier(useCase, repo);
 });

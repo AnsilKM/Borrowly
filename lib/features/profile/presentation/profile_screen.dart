@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,9 +11,13 @@ import 'package:borrowly/core/widgets/borrowly_button.dart';
 import 'package:borrowly/core/widgets/borrowly_card.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/core/widgets/borrowly_image_picker_bottom_sheet.dart';
+import 'package:borrowly/core/utils/avatar_provider_util.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 import 'package:borrowly/features/borrow/presentation/providers/borrow_provider.dart';
 import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
+
+import 'package:borrowly/core/location/location_provider.dart';
+import '../../home/presentation/widgets/location_search_bottom_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -33,6 +36,7 @@ class ProfileScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final topPadding = MediaQuery.of(context).viewPadding.top;
 
     final userName = (user != null && user.fullName.isNotEmpty) ? user.fullName : 'Guest Neighbor';
     final userEmail = (user != null && user.email.isNotEmpty) ? user.email : 'guest@borrowly.app';
@@ -65,26 +69,57 @@ class ProfileScreen extends ConsumerWidget {
             ? '${(userItems.fold<double>(0, (sum, i) => sum + i.ratingScore) / userItems.length).toStringAsFixed(1)} ⭐'
             : '5.0 ⭐');
 
+    final locationState = ref.watch(activeLocationProvider).valueOrNull;
+    final fix = locationState?.fix;
+
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       body: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+          physics: const ClampingScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: AppSpacing.lg,
+            right: AppSpacing.lg,
+            top: topPadding > 0 ? topPadding + AppSpacing.sm : AppSpacing.lg,
+            bottom: AppSpacing.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Screen Title
-              Text(
-                'My Profile',
-                style: AppTypography.displayLarge(isDark).copyWith(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                ),
+              // Screen Title Header Row with Top-Right Logout Icon Button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'My Profile',
+                    style: AppTypography.displayLarge(isDark).copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (!authState.isGuest)
+                    IconButton(
+                      tooltip: 'Logout',
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.logout_rounded,
+                          color: AppColors.danger,
+                          size: 20,
+                        ),
+                      ),
+                      onPressed: () => _showLogoutDialog(context, ref),
+                    ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Warm User Profile Card
+              // Warm User Profile Header Card
               BorrowlyCard(
                 variant: BorrowlyCardVariant.warm,
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -118,6 +153,14 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         GestureDetector(
                           onTap: () {
+                            if (authState.isGuest) {
+                              BorrowlyToast.show(
+                                context,
+                                'Please sign in to update your profile photo.',
+                                icon: Icons.lock_outline_rounded,
+                              );
+                              return;
+                            }
                             BorrowlyImagePickerBottomSheet.show(
                               context,
                               title: 'Update Profile Picture',
@@ -145,51 +188,51 @@ class ProfileScreen extends ConsumerWidget {
                                   boxShadow: AppShadows.medium,
                                 ),
                                 child: CircleAvatar(
-                                  backgroundColor: Colors.white,
+                                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                                   radius: 38,
-                                  backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
-                                      ? (user.avatarUrl!.startsWith('http')
-                                          ? NetworkImage(user.avatarUrl!) as ImageProvider
-                                          : FileImage(File(user.avatarUrl!)))
-                                      : null,
-                                  child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
-                                      ? Text(
-                                          userName[0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: AppColors.primaryDark,
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        )
-                                      : null,
+                                  backgroundImage: getAvatarImageProvider(user?.displayAvatarUrl),
                                 ),
                               ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white, width: 1.5),
-                                  ),
-                                  child: const Icon(
-                                    Icons.camera_alt_rounded,
-                                    color: Colors.white,
-                                    size: 14,
+                              if (!authState.isGuest)
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white, width: 1.5),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                   ),
                                 ),
-                              ),
                             ],
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm + 2),
-                        Text(
-                          userName,
-                          style: AppTypography.headingLarge(isDark).copyWith(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
+                        GestureDetector(
+                          onTap: () {
+                            if (authState.isGuest) {
+                              BorrowlyToast.show(
+                                context,
+                                'Please sign in to edit your profile details.',
+                                icon: Icons.lock_outline_rounded,
+                              );
+                              return;
+                            }
+                            context.push(AppRoutes.profileSetup);
+                          },
+                          child: Text(
+                            userName,
+                            style: AppTypography.headingLarge(isDark).copyWith(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -226,9 +269,8 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(width: AppSpacing.xs + 2),
                             BorrowlyBadge(
-                              label: '${user?.searchRadiusKm ?? 5} km Radius',
+                              label: fix != null ? '📍 ${fix.localityName}' : '📍 Location Off',
                               variant: BorrowlyBadgeVariant.distance,
-                              icon: const Icon(Icons.near_me_rounded),
                             ),
                           ],
                         ),
@@ -239,7 +281,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Community Stats (Real Dynamic Data)
+              // Community Stats
               Row(
                 children: [
                   Expanded(
@@ -248,6 +290,9 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'Borrows',
                       icon: Icons.handshake_rounded,
                       isDark: isDark,
+                      onTap: authState.isGuest
+                          ? () => BorrowlyToast.show(context, 'Sign in to view borrow history', icon: Icons.lock_outline_rounded)
+                          : null,
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs + 2),
@@ -257,6 +302,9 @@ class ProfileScreen extends ConsumerWidget {
                       label: 'Shared',
                       icon: Icons.inventory_2_rounded,
                       isDark: isDark,
+                      onTap: authState.isGuest
+                          ? () => BorrowlyToast.show(context, 'Sign in to view active listings', icon: Icons.lock_outline_rounded)
+                          : () => context.push(AppRoutes.myListings),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.xs + 2),
@@ -272,12 +320,22 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.md),
 
-              // Account & Legal Options Menu Card
+              // Account & Settings Menu Card
               BorrowlyCard(
                 variant: BorrowlyCardVariant.flat,
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Column(
                   children: [
+                    _ProfileMenuItem(
+                      icon: Icons.map_outlined,
+                      title: 'Search Location',
+                      subtitle: fix != null
+                          ? 'Active: ${fix.localityName} (${fix.source.toUpperCase()})'
+                          : 'Set your neighborhood location',
+                      isDark: isDark,
+                      onTap: () => LocationSearchBottomSheet.show(context),
+                    ),
+                    Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
                     _ProfileMenuItem(
                       icon: Icons.inventory_2_outlined,
                       title: 'My Listings',
@@ -322,67 +380,61 @@ class ProfileScreen extends ConsumerWidget {
                   icon: const Icon(Icons.login_rounded),
                   onPressed: () => context.push(AppRoutes.login),
                 ),
-              ] else ...[
-                BorrowlyButton(
-                  label: 'Logout Session',
-                  variant: BorrowlyButtonVariant.outline,
-                  isFullWidth: true,
-                  icon: const Icon(Icons.logout_rounded, color: AppColors.danger),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (dialogContext) {
-                        return AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: const Row(
-                            children: [
-                              Icon(Icons.logout_rounded, color: AppColors.danger),
-                              SizedBox(width: 8),
-                              Text('Logout Session', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                            ],
-                          ),
-                          content: const Text(
-                            'Are you sure you want to log out of your Borrowly session?',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(dialogContext).pop(),
-                              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.danger,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                elevation: 0,
-                              ),
-                              onPressed: () async {
-                                Navigator.of(dialogContext).pop();
-                                await ref.read(authProvider.notifier).signOut();
-                                if (context.mounted) {
-                                  BorrowlyToast.show(
-                                    context,
-                                    'Logged out. Returned to Guest Mode.',
-                                    icon: Icons.check_circle_outline_rounded,
-                                  );
-                                }
-                              },
-                              child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
               ],
               const SizedBox(height: 100),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.logout_rounded, color: AppColors.danger),
+              SizedBox(width: 8),
+              Text('Logout Session', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: const Text(
+            'Are you sure you want to log out of your Borrowly session?',
+            style: TextStyle(fontSize: 14),
+          ),
+          actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                elevation: 0,
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+                await ref.read(authProvider.notifier).signOut();
+                if (context.mounted) {
+                  BorrowlyToast.show(
+                    context,
+                    'Logged out. Returned to Guest Mode.',
+                    icon: Icons.check_circle_outline_rounded,
+                  );
+                }
+              },
+              child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -392,18 +444,21 @@ class _StatCard extends StatelessWidget {
   final String label;
   final IconData icon;
   final bool isDark;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.value,
     required this.label,
     required this.icon,
     required this.isDark,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return BorrowlyCard(
       variant: BorrowlyCardVariant.elevated,
+      onTap: onTap,
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.xs),
       child: Column(
         children: [

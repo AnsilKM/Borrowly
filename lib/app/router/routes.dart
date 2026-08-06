@@ -4,7 +4,7 @@ abstract class AppRoutes {
   static const String search = '/search';
   static const String activity = '/activity';
   static const String profile = '/profile';
-  static const String designSystem = '/design-system';
+
   static const String login = '/login';
   static const String profileSetup = '/profile-setup';
   static const String addItem = '/add-item';

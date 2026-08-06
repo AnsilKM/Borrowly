@@ -6,22 +6,33 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_typography.dart';
+import '../../../../core/utils/distance_formatter.dart';
 import '../../domain/entities/item_entity.dart';
 import '../providers/wishlist_provider.dart';
+import '../../../../features/auth/presentation/providers/auth_provider.dart';
 
 class ItemCard extends ConsumerWidget {
   final ItemEntity item;
   final VoidCallback? onTap;
+  final bool isMyListing;
 
   const ItemCard({
     super.key,
     required this.item,
     this.onTap,
+    this.isMyListing = false,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final authUser = ref.watch(authProvider).user;
+    final isOwner = isMyListing ||
+        (authUser != null &&
+            !authUser.isGuest &&
+            (item.ownerId == authUser.id ||
+                item.ownerId == '00000000-0000-0000-0000-000000000001'));
+
     final imgStr = item.images.isNotEmpty
         ? item.images.first
         : 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600';
@@ -79,20 +90,71 @@ class ItemCard extends ConsumerWidget {
                                   child: const Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted),
                                 ),
                               )
-                            : Image.file(
-                                File(imgStr),
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
-                                  child: const Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted),
-                                ),
-                              ),
+                            : (File(imgStr).existsSync()
+                                ? Image.file(
+                                    File(imgStr),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                                      child: const Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted),
+                                    ),
+                                  )
+                                : Container(
+                                    color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+                                    child: const Icon(Icons.inventory_2_outlined, size: 36, color: AppColors.textMuted),
+                                  )),
                       ),
                     ),
 
-                    // Distance Badge (Bottom Left - Translucent Dark Pill)
+                    // Hold / Paused Status Visual Identifier Overlay
+                    if (!item.isAvailable) ...[
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.38),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            borderRadius: BorderRadius.circular(9999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.pause_circle_rounded, color: Colors.white, size: 12),
+                              SizedBox(width: 4),
+                              Text(
+                                'ON HOLD',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // Distance Badge (Bottom Left - Translucent Dark Pill with Walking/Driving Estimate)
                     Positioned(
                       bottom: 8,
                       left: 8,
@@ -102,19 +164,13 @@ class ItemCard extends ConsumerWidget {
                           color: Colors.black.withValues(alpha: 0.65),
                           borderRadius: BorderRadius.circular(9999),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('📍 ', style: TextStyle(fontSize: 10)),
-                            Text(
-                              item.formattedDistance,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          DistanceFormatter.formatProximity(item.distanceKm),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -196,39 +252,32 @@ class ItemCard extends ConsumerWidget {
                     const SizedBox(height: 5),
                     Row(
                       children: [
-                        CircleAvatar(
-                          radius: 9,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                          backgroundImage: item.ownerAvatar != null
-                              ? CachedNetworkImageProvider(
-                                  item.ownerAvatar!,
-                                  maxHeight: 36,
-                                  maxWidth: 36,
-                                )
-                              : null,
-                          child: item.ownerAvatar == null
-                              ? Text(
-                                  item.ownerName.isNotEmpty ? item.ownerName[0] : 'U',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            item.ownerName,
-                            style: AppTypography.bodySmall(isDark).copyWith(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.olive,
-                              fontSize: 11.5,
+                        if (!isOwner) ...[
+                          CircleAvatar(
+                            radius: 9,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                            backgroundImage: CachedNetworkImageProvider(
+                              (item.ownerAvatar != null && item.ownerAvatar!.isNotEmpty)
+                                  ? item.ownerAvatar!
+                                  : 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(item.ownerName.isNotEmpty ? item.ownerName : "Neighbor")}&background=0D9488&color=ffffff&bold=true&size=200',
+                              maxHeight: 36,
+                              maxWidth: 36,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              item.ownerName,
+                              style: AppTypography.bodySmall(isDark).copyWith(
+                                color: isDark ? AppColors.darkTextSecondary : AppColors.olive,
+                                fontSize: 11.5,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ] else
+                          const Spacer(),
                         const Icon(Icons.star_rounded, size: 13, color: AppColors.warning),
                         const SizedBox(width: 2),
                         Text(

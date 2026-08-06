@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../app/router/routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_typography.dart';
 
@@ -56,6 +58,11 @@ class _LegalWebViewScreenState extends State<LegalWebViewScreen> {
               setState(() {
                 _loadingProgress = 100;
               });
+              // Inject JS to remove any "Back to Borrowly" buttons from loaded HTML
+              _controller.runJavaScript('''
+                const backBtns = document.querySelectorAll('.back-btn, [href*="index.html"]');
+                backBtns.forEach(el => el.remove());
+              ''');
             }
           },
           onWebResourceError: (WebResourceError error) {
@@ -70,83 +77,103 @@ class _LegalWebViewScreenState extends State<LegalWebViewScreen> {
       ..loadRequest(Uri.parse(widget.url));
   }
 
+  void _closeWebView() {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(AppRoutes.profile);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: AppTypography.headingMedium(isDark),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              setState(() {
-                _hasError = false;
-              });
-              _controller.reload();
-            },
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          _closeWebView();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: _closeWebView,
           ),
-        ],
-        bottom: _loadingProgress < 100 && !_hasError
-            ? PreferredSize(
-                preferredSize: const Size.fromHeight(3.0),
-                child: LinearProgressIndicator(
-                  value: _loadingProgress / 100,
-                  color: AppColors.primary,
-                  backgroundColor: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
-                ),
-              )
-            : null,
-      ),
-      body: SafeArea(
-        child: _hasError
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textMuted),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Failed to load ${widget.title}',
-                        style: AppTypography.headingMedium(isDark),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Please check your internet connection and try again.',
-                        style: AppTypography.bodySmall(isDark),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _hasError = false;
-                          });
-                          _controller.reload();
-                        },
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+          title: Text(
+            widget.title,
+            style: AppTypography.headingMedium(isDark),
+          ),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: () {
+                setState(() {
+                  _hasError = false;
+                });
+                _controller.reload();
+              },
+            ),
+          ],
+          bottom: _loadingProgress < 100 && !_hasError
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(3.0),
+                  child: LinearProgressIndicator(
+                    value: _loadingProgress / 100,
+                    color: AppColors.primary,
+                    backgroundColor: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
                   ),
-                ),
-              )
-            : WebViewWidget(controller: _controller),
+                )
+              : null,
+        ),
+        body: SafeArea(
+          child: _hasError
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.wifi_off_rounded, size: 56, color: AppColors.textMuted),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Failed to load ${widget.title}',
+                          style: AppTypography.headingMedium(isDark),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Please check your internet connection and try again.',
+                          style: AppTypography.bodySmall(isDark),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _hasError = false;
+                            });
+                            _controller.reload();
+                          },
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : WebViewWidget(controller: _controller),
+        ),
       ),
     );
   }

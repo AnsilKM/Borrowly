@@ -86,7 +86,7 @@ class ProductListScreen extends ConsumerWidget {
             }
           },
           child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
             slivers: [
               // Header Summary Banner
               SliverToBoxAdapter(
@@ -179,7 +179,7 @@ class ProductListScreen extends ConsumerWidget {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          return ItemCard(item: items[index]);
+                          return ItemCard(item: items[index], isMyListing: isMyListings);
                         },
                         childCount: items.length,
                       ),

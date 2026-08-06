@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/network/supabase_storage_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/user_entity.dart';
@@ -124,20 +125,16 @@ class SupabaseAuthRepository implements AuthRepository {
             );
 
             if (res.user != null) {
-              final user = UserEntity(
-                id: res.user!.id,
-                email: res.user!.email ?? googleUser.email,
-                fullName: res.user!.userMetadata?['full_name'] ?? googleUser.displayName ?? 'Alex Morgan',
-                avatarUrl: res.user!.userMetadata?['avatar_url'] ?? googleUser.photoUrl,
-                searchRadiusKm: 3,
-                isGuest: false,
-                createdAt: DateTime.now(),
+              final user = await _resolveOrCreateUserProfile(
+                client,
+                res.user!,
+                googleDisplayName: googleUser.displayName,
+                googlePhotoUrl: googleUser.photoUrl,
               );
-              await _saveUserLocal(user);
-              _authStateController.add(user);
               BorrowlyLogger.event('Auth: Google Sign-In Success', parameters: {
                 'userId': user.id,
                 'email': user.email,
+                'isNewUser': user.isNewUser,
               });
               return user;
             }
@@ -159,17 +156,7 @@ class SupabaseAuthRepository implements AuthRepository {
 
         if (success && client.auth.currentUser != null) {
           final u = client.auth.currentUser!;
-          final user = UserEntity(
-            id: u.id,
-            email: u.email ?? '',
-            fullName: u.userMetadata?['full_name'] ?? 'Borrowly User',
-            avatarUrl: u.userMetadata?['avatar_url'],
-            searchRadiusKm: 3,
-            isGuest: false,
-            createdAt: DateTime.now(),
-          );
-          await _saveUserLocal(user);
-          _authStateController.add(user);
+          final user = await _resolveOrCreateUserProfile(client, u);
           return user;
         }
       } catch (e, stack) {
@@ -198,15 +185,28 @@ class SupabaseAuthRepository implements AuthRepository {
       'radius': profile.searchRadiusKm,
     });
 
+    String uploadedAvatarUrl = profile.avatarUrl ?? '';
+    if (uploadedAvatarUrl.isNotEmpty &&
+        !uploadedAvatarUrl.startsWith('http://') &&
+        !uploadedAvatarUrl.startsWith('https://') &&
+        !uploadedAvatarUrl.startsWith('assets/')) {
+      uploadedAvatarUrl = await SupabaseStorageService.uploadAvatarImage(uploadedAvatarUrl);
+    } else if (uploadedAvatarUrl.isEmpty) {
+      uploadedAvatarUrl = profile.displayAvatarUrl;
+    }
+
+    final finalProfile = profile.copyWith(avatarUrl: uploadedAvatarUrl);
+
     final client = SupabaseService.client;
     if (client != null && client.auth.currentUser != null) {
       try {
         await client.auth.updateUser(
           UserAttributes(
             data: {
-              'full_name': profile.fullName,
-              'phone': profile.phone,
-              'search_radius_km': profile.searchRadiusKm,
+              'full_name': finalProfile.fullName,
+              'phone': finalProfile.phone,
+              'avatar_url': finalProfile.avatarUrl,
+              'search_radius_km': finalProfile.searchRadiusKm,
             },
           ),
         );
@@ -214,12 +214,23 @@ class SupabaseAuthRepository implements AuthRepository {
         // Also upsert user into public.users database table
         await client.from('users').upsert({
           'id': client.auth.currentUser!.id,
-          'full_name': profile.fullName,
-          'email': profile.email,
-          'phone': profile.phone,
-          'avatar_url': profile.avatarUrl,
-          'search_radius_km': profile.searchRadiusKm,
+          'full_name': finalProfile.fullName,
+          'email': finalProfile.email,
+          'phone': finalProfile.phone,
+          'avatar_url': finalProfile.avatarUrl,
+          'search_radius_km': finalProfile.searchRadiusKm,
         });
+
+        // Global propagation: update owner_name and owner_avatar across all items owned by user
+        try {
+          await client.from('items').update({
+            'owner_name': finalProfile.fullName,
+            'owner_avatar': finalProfile.avatarUrl,
+          }).eq('owner_id', client.auth.currentUser!.id);
+          BorrowlyLogger.info('Propagated updated user name "${finalProfile.fullName}" and avatar to user listings in Supabase.');
+        } catch (e) {
+          BorrowlyLogger.warning('Global item owner update notice: $e');
+        }
 
         BorrowlyLogger.info('Profile and phone number updated in Supabase.');
       } catch (e, stack) {
@@ -227,9 +238,26 @@ class SupabaseAuthRepository implements AuthRepository {
       }
     }
 
-    await _saveUserLocal(profile);
-    _authStateController.add(profile);
-    return profile;
+    final finalUser = finalProfile;
+
+    // Update local Hive cache for items owned by current user
+    try {
+      final cached = _localStorageService.getCachedNearbyItems();
+      final updated = cached.map((itemMap) {
+        if (itemMap['owner_id'] == finalUser.id) {
+          final m = Map<String, dynamic>.from(itemMap);
+          m['owner_name'] = finalUser.fullName;
+          m['owner_avatar'] = finalUser.avatarUrl;
+          return m;
+        }
+        return itemMap;
+      }).toList();
+      _localStorageService.cacheNearbyItems(updated);
+    } catch (_) {}
+
+    await _saveUserLocal(finalUser);
+    _authStateController.add(finalUser);
+    return finalUser;
   }
 
   @override
@@ -291,5 +319,72 @@ class SupabaseAuthRepository implements AuthRepository {
       'is_guest': user.isGuest,
       'created_at': user.createdAt.toIso8601String(),
     });
+  }
+
+  Future<UserEntity> _resolveOrCreateUserProfile(
+    SupabaseClient client,
+    User authUser, {
+    String? googleDisplayName,
+    String? googlePhotoUrl,
+  }) async {
+    Map<String, dynamic>? dbUserRow;
+    try {
+      final res = await client.from('users').select().eq('id', authUser.id).maybeSingle();
+      if (res != null) {
+        dbUserRow = Map<String, dynamic>.from(res as Map);
+      }
+    } catch (e) {
+      BorrowlyLogger.warning('Database check user notice: $e');
+    }
+
+    final bool isNew = dbUserRow == null;
+
+    if (isNew) {
+      BorrowlyLogger.info('NEW USER DETECTED: First-time Google login for ${authUser.email}');
+      final initialName = googleDisplayName ?? authUser.userMetadata?['full_name'] ?? authUser.email?.split('@').first ?? 'Borrowly User';
+      final initialAvatar = googlePhotoUrl ?? authUser.userMetadata?['avatar_url'];
+
+      try {
+        await client.from('users').insert({
+          'id': authUser.id,
+          'email': authUser.email ?? '',
+          'full_name': initialName,
+          'avatar_url': initialAvatar,
+          'search_radius_km': 5,
+        });
+      } catch (e) {
+        BorrowlyLogger.warning('Insert initial user row notice: $e');
+      }
+
+      final newUser = UserEntity(
+        id: authUser.id,
+        email: authUser.email ?? '',
+        fullName: initialName,
+        avatarUrl: initialAvatar,
+        searchRadiusKm: 5,
+        isGuest: false,
+        isNewUser: true,
+        createdAt: DateTime.now(),
+      );
+      await _saveUserLocal(newUser);
+      _authStateController.add(newUser);
+      return newUser;
+    } else {
+      BorrowlyLogger.info('EXISTING USER DETECTED: Continuing session for ${dbUserRow['full_name']} (${authUser.email})');
+      final existingUser = UserEntity(
+        id: authUser.id,
+        email: authUser.email ?? dbUserRow['email'] as String? ?? '',
+        fullName: dbUserRow['full_name'] as String? ?? authUser.userMetadata?['full_name'] ?? 'Borrowly User',
+        avatarUrl: dbUserRow['avatar_url'] as String? ?? authUser.userMetadata?['avatar_url'],
+        phone: dbUserRow['phone'] as String? ?? authUser.phone,
+        searchRadiusKm: (dbUserRow['search_radius_km'] as num?)?.toInt() ?? 5,
+        isGuest: false,
+        isNewUser: false,
+        createdAt: DateTime.tryParse(dbUserRow['created_at'] as String? ?? '') ?? DateTime.now(),
+      );
+      await _saveUserLocal(existingUser);
+      _authStateController.add(existingUser);
+      return existingUser;
+    }
   }
 }

@@ -133,8 +133,13 @@ class LoginScreen extends ConsumerWidget {
                   onPressed: () async {
                     try {
                       await authController.signInWithGoogle();
+                      final currentUser = ref.read(authProvider).user;
                       if (context.mounted && ref.read(authProvider).isAuthenticated) {
-                        context.go(AppRoutes.profileSetup);
+                        if (currentUser?.isNewUser == true) {
+                          context.go(AppRoutes.profileSetup);
+                        } else {
+                          context.go(AppRoutes.home);
+                        }
                       }
                     } catch (e) {
                       if (context.mounted) {

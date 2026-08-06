@@ -6,11 +6,13 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../core/widgets/borrowly_badge.dart';
+
 import '../../../core/widgets/borrowly_card.dart';
 import '../../../core/widgets/borrowly_empty_state.dart';
 import '../../../core/widgets/borrowly_text_field.dart';
 import '../../item/presentation/widgets/item_card.dart';
 import '../../item/presentation/widgets/item_card_skeleton.dart';
+
 import 'providers/search_provider.dart';
 import 'widgets/search_filter_bottom_sheet.dart';
 import 'widgets/search_suggestions.dart';
@@ -208,7 +210,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                         variant: BorrowlyCardVariant.warm,
                         child: BorrowlyEmptyState(
                           title: 'No Matching Items Found',
-                          description: 'Try searching for another keyword or expand your neighborhood radius.',
+                          description: 'Try searching for another keyword or adjust your radius filter.',
                           icon: Icons.search_off_rounded,
                           actionLabel: 'Reset Filters',
                           onActionPressed: () {

@@ -9,6 +9,7 @@ import 'package:borrowly/features/item/domain/entities/item_category.dart';
 import 'package:borrowly/features/item/domain/repositories/item_repository.dart';
 import '../providers/search_provider.dart';
 
+
 class SearchFilterBottomSheet extends ConsumerWidget {
   const SearchFilterBottomSheet({super.key});
 
@@ -72,33 +73,31 @@ class SearchFilterBottomSheet extends ConsumerWidget {
                 const Divider(),
                 const SizedBox(height: AppSpacing.sm),
 
-                // 1. Distance Radius Filter (1, 2, 3, 5 km)
-                Text('Maximum Search Radius', style: AppTypography.labelText(isDark)),
-                const SizedBox(height: AppSpacing.xs),
+                // 1. Distance Radius Filter (Interactive Slider)
                 Row(
-                  children: [1.0, 2.0, 3.0, 5.0].map((radius) {
-                    final isSelected = searchState.maxDistanceKm == radius;
-                    return Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: AppSpacing.xs),
-                        child: ChoiceChip(
-                          label: Text('${radius.toInt()} km'),
-                          selected: isSelected,
-                          showCheckmark: false,
-                          onSelected: (val) {
-                            if (val) searchNotifier.setMaxDistance(radius);
-                          },
-                          selectedColor: AppColors.primary,
-                          backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
-                          labelStyle: TextStyle(
-                            color: isSelected ? Colors.white : (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary),
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            fontSize: 12,
-                          ),
-                        ),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Maximum Search Radius', style: AppTypography.labelText(isDark)),
+                    Text(
+                      '${searchState.maxDistanceKm.toInt()} km',
+                      style: AppTypography.bodySmall(isDark).copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Slider(
+                  value: searchState.maxDistanceKm,
+                  min: 1.0,
+                  max: 15.0,
+                  divisions: 14,
+                  activeColor: AppColors.primary,
+                  label: '${searchState.maxDistanceKm.toInt()} km',
+                  onChanged: (radius) {
+                    searchNotifier.setMaxDistance(radius);
+                  },
                 ),
                 const SizedBox(height: AppSpacing.md),
 

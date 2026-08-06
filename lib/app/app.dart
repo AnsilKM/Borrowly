@@ -4,6 +4,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 
+class BorrowlyScrollBehavior extends MaterialScrollBehavior {
+  const BorrowlyScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) {
+    return child; // Disables overscroll stretching & bouncing UI shift globally
+  }
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    return const ClampingScrollPhysics();
+  }
+}
+
 class BorrowlyApp extends ConsumerWidget {
   const BorrowlyApp({super.key});
 
@@ -17,7 +31,9 @@ class BorrowlyApp extends ConsumerWidget {
       title: 'Borrowly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
+      scrollBehavior: const BorrowlyScrollBehavior(),
       routerConfig: router,
       builder: (context, child) {
         return MediaQuery(

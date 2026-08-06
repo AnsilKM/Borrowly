@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/network/supabase_service.dart';
+import '../../../../core/network/supabase_storage_service.dart';
 import '../../../../core/storage/local_storage_service.dart';
 import '../../../../core/utils/borrowly_logger.dart';
 import '../../domain/entities/item_category.dart';
@@ -8,17 +8,51 @@ import '../../domain/entities/item_entity.dart';
 import '../../domain/repositories/item_repository.dart';
 
 class SupabaseItemRepository implements ItemRepository {
-  bool _hasSeeded = false;
+  static final Map<String, bool> _availabilityOverrides = {};
 
   ItemEntity _mapSupabaseRowToEntity(Map<String, dynamic> row) {
-    final catString = row['category'] as String? ?? 'tools';
+    final rawCategoryStr = row['category'] as String? ?? 'other';
     final category = ItemCategory.values.firstWhere(
-      (c) => c.name.toLowerCase() == catString.toLowerCase(),
-      orElse: () => ItemCategory.tools,
+      (c) => c.name.toLowerCase() == rawCategoryStr.toLowerCase(),
+      orElse: () => ItemCategory.other,
     );
 
+    final itemId = row['id'] as String? ?? '';
+    final rawIsAvailable = row['is_available'] as bool? ?? true;
+    final persistentOverrides = _localStorageService.getAvailabilityOverrides();
+    final isAvailable = _availabilityOverrides.containsKey(itemId)
+        ? _availabilityOverrides[itemId]!
+        : (persistentOverrides.containsKey(itemId)
+            ? persistentOverrides[itemId]!
+            : rawIsAvailable);
+
+    final ownerId = row['owner_id'] as String? ?? 'user_1';
+    var ownerName = row['owner_name'] as String? ?? 'Neighbor';
+    var ownerAvatar = row['owner_avatar'] as String?;
+
+    try {
+      final cachedUser = _localStorageService.getCachedUserProfile();
+      if (cachedUser != null) {
+        final cachedId = cachedUser['id'] as String? ?? '';
+        final cachedName = cachedUser['full_name'] as String? ?? '';
+        final cachedAvatar = cachedUser['avatar_url'] as String?;
+        final isGuest = cachedUser['is_guest'] as bool? ?? false;
+
+        if (!isGuest && (ownerId == cachedId || ownerId == '00000000-0000-0000-0000-000000000001')) {
+          if (cachedName.isNotEmpty) {
+            ownerName = cachedName;
+          }
+          if (cachedAvatar != null && cachedAvatar.isNotEmpty) {
+            ownerAvatar = cachedAvatar;
+          } else {
+            ownerAvatar = 'https://ui-avatars.com/api/?name=${Uri.encodeComponent(ownerName.isNotEmpty ? ownerName : "Neighbor")}&background=0D9488&color=ffffff&bold=true&size=200';
+          }
+        }
+      }
+    } catch (_) {}
+
     return ItemEntity(
-      id: row['id'] as String? ?? '',
+      id: itemId,
       title: row['title'] as String? ?? 'Untitled Item',
       description: row['description'] as String? ?? '',
       category: category,
@@ -27,11 +61,11 @@ class SupabaseItemRepository implements ItemRepository {
       depositAmount: (row['deposit_amount'] as num?)?.toDouble() ?? 0.0,
       images: (row['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
           const ['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600'],
-      ownerId: row['owner_id'] as String? ?? 'user_1',
-      ownerName: row['owner_name'] as String? ?? 'Neighbor',
-      ownerAvatar: row['owner_avatar'] as String?,
+      ownerId: ownerId,
+      ownerName: ownerName,
+      ownerAvatar: ownerAvatar,
       distanceKm: (row['distance_km'] as num?)?.toDouble() ?? 1.2,
-      isAvailable: row['is_available'] as bool? ?? true,
+      isAvailable: isAvailable,
       locationName: row['location_name'] as String? ?? 'Nearby Neighborhood',
       ratingScore: (row['rating_score'] as num?)?.toDouble() ?? 4.9,
       reviewCount: row['review_count'] as int? ?? 12,
@@ -40,135 +74,70 @@ class SupabaseItemRepository implements ItemRepository {
     );
   }
 
-  Future<void> _checkAndSeedSupabase(SupabaseClient client) async {
-    if (_hasSeeded) return;
-    _hasSeeded = true;
-    try {
-      final response = await client.from('items').select('id').limit(1);
-      final list = response as List<dynamic>;
-      if (list.isEmpty) {
-        BorrowlyLogger.info('Supabase items table is empty. Inserting initial neighborhood items into Supabase...');
-        try {
-          await client.from('users').upsert([
-            {'id': '00000000-0000-0000-0000-000000000001', 'full_name': 'Marcus Vance', 'email': 'marcus@borrowly.com'},
-            {'id': '00000000-0000-0000-0000-000000000002', 'full_name': 'Elena Rostova', 'email': 'elena@borrowly.com'},
-            {'id': '00000000-0000-0000-0000-000000000003', 'full_name': 'Sarah Jenkins', 'email': 'sarah@borrowly.com'},
-            {'id': '00000000-0000-0000-0000-000000000004', 'full_name': 'David Chen', 'email': 'david@borrowly.com'},
-          ]);
-        } catch (_) {}
-
-        await client.from('items').insert([
-          {
-            'owner_id': '00000000-0000-0000-0000-000000000001',
-            'owner_name': 'Marcus Vance',
-            'owner_avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-            'title': 'DeWalt Cordless Drill Kit 20V',
-            'description': 'Complete cordless drill set with 2 lithium-ion batteries and fast charger.',
-            'category': 'tools',
-            'daily_price': 12.0,
-            'is_free': false,
-            'deposit_amount': 50.0,
-            'images': ['https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600'],
-            'location_name': 'Oak Street (0.8 km away)',
-            'location': 'POINT(76.2711 9.9312)',
-            'distance_km': 0.8,
-            'is_available': true,
-            'rating_score': 4.9,
-            'review_count': 18,
-          },
-          {
-            'owner_id': '00000000-0000-0000-0000-000000000002',
-            'owner_name': 'Elena Rostova',
-            'owner_avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-            'title': '4-Person Waterproof Camping Tent',
-            'description': 'Easy set-up dome tent with rainfly and ground tarp.',
-            'category': 'outdoors',
-            'daily_price': 15.0,
-            'is_free': false,
-            'deposit_amount': 40.0,
-            'images': ['https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600'],
-            'location_name': 'Pine Avenue (1.2 km away)',
-            'location': 'POINT(76.2711 9.9312)',
-            'distance_km': 1.2,
-            'is_available': true,
-            'rating_score': 5.0,
-            'review_count': 9,
-          },
-          {
-            'owner_id': '00000000-0000-0000-0000-000000000003',
-            'owner_name': 'Sarah Jenkins',
-            'owner_avatar': 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-            'title': 'Heavy-Duty 12ft Extension Ladder',
-            'description': 'Sturdy aluminum extension ladder for gutter cleaning and painting.',
-            'category': 'tools',
-            'daily_price': 0.0,
-            'is_free': true,
-            'deposit_amount': 0.0,
-            'images': ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600'],
-            'location_name': 'Maple Drive (0.5 km away)',
-            'location': 'POINT(76.2711 9.9312)',
-            'distance_km': 0.5,
-            'is_available': true,
-            'rating_score': 4.8,
-            'review_count': 14,
-          },
-          {
-            'owner_id': '00000000-0000-0000-0000-000000000004',
-            'owner_name': 'David Chen',
-            'owner_avatar': 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200',
-            'title': 'Pressure Washer 2000 PSI',
-            'description': 'Electric pressure washer for patio cleaning, driveway, and car washing.',
-            'category': 'cleaning',
-            'daily_price': 18.0,
-            'is_free': false,
-            'deposit_amount': 60.0,
-            'images': ['https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600'],
-            'location_name': 'Cedar Lane (1.8 km away)',
-            'location': 'POINT(76.2711 9.9312)',
-            'distance_km': 1.8,
-            'is_available': true,
-            'rating_score': 4.9,
-            'review_count': 22,
-          },
-        ]);
-        BorrowlyLogger.info('Successfully seeded initial items into Supabase!');
-      }
-    } catch (e) {
-      BorrowlyLogger.warning('Supabase auto-seed notice: $e');
-    }
-  }
-
   final LocalStorageService _localStorageService = LocalStorageService();
 
   @override
   Future<List<ItemEntity>> getNearbyItems({
     required double maxDistanceKm,
     ItemCategory category = ItemCategory.all,
+    double? lat,
+    double? lng,
   }) async {
     BorrowlyLogger.event('PostGIS: Fetch Nearby Items', parameters: {
       'radiusKm': maxDistanceKm,
       'category': category.name,
+      'hasCoords': lat != null,
     });
 
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
-      await _checkAndSeedSupabase(client);
       try {
-        final response = await client
-            .from('items')
-            .select()
-            .lte('distance_km', maxDistanceKm)
-            .order('distance_km', ascending: true);
+        List<dynamic> rows;
 
-        final rows = response as List<dynamic>;
-        final rawRows = rows.map((r) => Map<String, dynamic>.from(r as Map)).toList();
-        
-        // Cache to Hive asynchronously for zero-lag subsequent loads
+        if (lat != null && lng != null) {
+          // ── Real PostGIS RPC: filters by actual GPS distance ─────────────
+          BorrowlyLogger.info('Using PostGIS RPC get_nearby_items at ($lat, $lng)');
+          try {
+            rows = await client.rpc('get_nearby_items', params: {
+              'lat': lat,
+              'lng': lng,
+              'radius_km': maxDistanceKm,
+              'category_filter': category == ItemCategory.all ? 'all' : category.name,
+            });
+          } catch (e) {
+            BorrowlyLogger.warning('RPC get_nearby_items notice: $e — using items query fallback');
+            rows = await client
+                .from('items')
+                .select()
+                .lte('distance_km', maxDistanceKm)
+                .order('distance_km', ascending: true);
+          }
+        } else {
+          // ── Fallback: static distance_km column (no GPS) ─────────────────
+          BorrowlyLogger.info('No GPS coordinates — using static distance_km fallback.');
+          rows = await client
+              .from('items')
+              .select()
+              .lte('distance_km', maxDistanceKm)
+              .order('distance_km', ascending: true);
+        }
+
+        final deletedIds = _localStorageService.getDeletedItemIds();
+        final rawRows = rows
+            .map((r) => Map<String, dynamic>.from(r as Map))
+            .where((r) => !deletedIds.contains(r['id'] as String? ?? ''))
+            .toList();
         _localStorageService.cacheNearbyItems(rawRows);
 
-        final items = rawRows.map((r) => _mapSupabaseRowToEntity(r)).toList();
-        BorrowlyLogger.info('Supabase returned ${items.length} live items.');
+        final items = rawRows
+            .map((r) => _mapSupabaseRowToEntity(r))
+            .toList();
+        BorrowlyLogger.info('Supabase returned ${items.length} live items after filtering deleted items.');
 
+        if (category != ItemCategory.all && lat != null) {
+          // RPC already filters by category — no double-filter needed.
+          return items;
+        }
         if (category != ItemCategory.all) {
           return items.where((i) => i.category == category).toList();
         }
@@ -179,9 +148,13 @@ class SupabaseItemRepository implements ItemRepository {
     }
 
     // Fast Hive Local Cache Fallback (< 5ms response time)
+    final deletedIds = _localStorageService.getDeletedItemIds();
     final cachedRaw = _localStorageService.getCachedNearbyItems();
     if (cachedRaw.isNotEmpty) {
-      final cachedItems = cachedRaw.map((r) => _mapSupabaseRowToEntity(r)).toList();
+      final cachedItems = cachedRaw
+          .map((r) => _mapSupabaseRowToEntity(r))
+          .where((i) => !deletedIds.contains(i.id))
+          .toList();
       BorrowlyLogger.info('Loaded ${cachedItems.length} items from Hive local storage cache.');
       if (category != ItemCategory.all) {
         return cachedItems.where((i) => i.category == category).toList();
@@ -193,50 +166,95 @@ class SupabaseItemRepository implements ItemRepository {
   }
 
   @override
-  Future<List<ItemEntity>> getRecentlyAdded({required double maxDistanceKm}) async {
+  Future<List<ItemEntity>> getRecentlyAdded({
+    required double maxDistanceKm,
+    double? lat,
+    double? lng,
+  }) async {
     BorrowlyLogger.event('Items: Fetch Recently Added');
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
-      await _checkAndSeedSupabase(client);
       try {
-        final response = await client
-            .from('items')
-            .select()
-            .order('created_at', ascending: false)
-            .limit(20);
-
-        final rows = response as List<dynamic>;
-        final items = rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
-        BorrowlyLogger.info('Fetched ${items.length} live items from Supabase.');
+        List<dynamic> rows;
+        if (lat != null && lng != null) {
+          try {
+            rows = await client.rpc('get_nearby_items', params: {
+              'lat': lat,
+              'lng': lng,
+              'radius_km': maxDistanceKm,
+              'category_filter': 'all',
+            });
+            // Sort by created_at descending for "recently added" semantics
+            rows = List<dynamic>.from(rows)
+              ..sort((a, b) {
+                final aDate = a['created_at'] as String? ?? '';
+                final bDate = b['created_at'] as String? ?? '';
+                return bDate.compareTo(aDate);
+              });
+            if (rows.length > 20) rows = rows.sublist(0, 20);
+          } catch (e) {
+            rows = await client
+                .from('items')
+                .select()
+                .order('created_at', ascending: false)
+                .limit(20);
+          }
+        } else {
+          rows = await client
+              .from('items')
+              .select()
+              .order('created_at', ascending: false)
+              .limit(20);
+        }
+        final deletedIds = _localStorageService.getDeletedItemIds();
+        final items = rows
+            .map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>))
+            .where((i) => !deletedIds.contains(i.id))
+            .toList();
+        BorrowlyLogger.info('Fetched ${items.length} recently added items from Supabase.');
         return items;
       } catch (e) {
         BorrowlyLogger.warning('Recently added fetch error: $e');
       }
     }
-
     return [];
   }
 
   @override
-  Future<List<ItemEntity>> getFreeItems({required double maxDistanceKm}) async {
+  Future<List<ItemEntity>> getFreeItems({
+    required double maxDistanceKm,
+    double? lat,
+    double? lng,
+  }) async {
     BorrowlyLogger.event('Items: Fetch Free Shares');
     final client = SupabaseService.client;
     if (client != null && SupabaseService.isConfigured) {
-      await _checkAndSeedSupabase(client);
       try {
-        final response = await client
-            .from('items')
-            .select()
-            .eq('is_free', true)
-            .limit(20);
-
-        final rows = response as List<dynamic>;
-        return rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
+        List<dynamic> rows;
+        if (lat != null && lng != null) {
+          final allNearby = await client.rpc('get_nearby_items', params: {
+            'lat': lat,
+            'lng': lng,
+            'radius_km': maxDistanceKm,
+            'category_filter': 'all',
+          }) as List<dynamic>;
+          rows = allNearby.where((r) => (r as Map)['is_free'] == true).toList();
+        } else {
+          rows = await client
+              .from('items')
+              .select()
+              .eq('is_free', true)
+              .limit(20);
+        }
+        final deletedIds = _localStorageService.getDeletedItemIds();
+        return rows
+            .map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>))
+            .where((i) => !deletedIds.contains(i.id))
+            .toList();
       } catch (e) {
         BorrowlyLogger.warning('Free items fetch error: $e');
       }
     }
-
     return [];
   }
 
@@ -261,11 +279,14 @@ class SupabaseItemRepository implements ItemRepository {
         final response = await client
             .from('items')
             .select()
-            .ilike('title', '%$query%')
-            .limit(30);
+            .or('title.ilike.%$query%,description.ilike.%$query%');
 
         final rows = response as List<dynamic>;
-        return rows.map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>)).toList();
+        final deletedIds = _localStorageService.getDeletedItemIds();
+        return rows
+            .map((r) => _mapSupabaseRowToEntity(r as Map<String, dynamic>))
+            .where((i) => !deletedIds.contains(i.id))
+            .toList();
       } catch (e) {
         BorrowlyLogger.warning('Search error: $e');
       }
@@ -306,6 +327,9 @@ class SupabaseItemRepository implements ItemRepository {
           }
         }
 
+        // Upload local device images to Supabase Storage Bucket ('item-images')
+        final cloudImageUrls = await SupabaseStorageService.uploadItemImages(item.images);
+
         final row = {
           'title': item.title,
           'description': item.description,
@@ -313,12 +337,13 @@ class SupabaseItemRepository implements ItemRepository {
           'daily_price': item.dailyPrice,
           'is_free': item.isFree,
           'deposit_amount': item.depositAmount,
-          'images': item.images,
+          'images': cloudImageUrls.isNotEmpty ? cloudImageUrls : item.images,
           'owner_id': validOwnerId,
           'owner_name': item.ownerName,
           'location_name': item.locationName,
           'location': 'POINT(76.2711 9.9312)',
           'is_available': true,
+          'is_edited': false,
         };
 
         final response = await client.from('items').insert(row).select().single();
@@ -362,5 +387,112 @@ class SupabaseItemRepository implements ItemRepository {
     } catch (_) {}
 
     return null;
+  }
+
+  @override
+  Future<ItemEntity> updateItem(ItemEntity item) async {
+    BorrowlyLogger.event('Item: Update Listing', parameters: {'itemId': item.id, 'title': item.title});
+
+    final client = SupabaseService.client;
+    if (client != null && SupabaseService.isConfigured) {
+      try {
+        final updatedRows = await client.from('items').update({
+          'title': item.title,
+          'description': item.description,
+          'category': item.category.name,
+          'daily_price': item.dailyPrice,
+          'is_free': item.isFree,
+          'deposit_amount': item.depositAmount,
+          'images': item.images,
+          'location_name': item.locationName,
+        }).eq('id', item.id).select();
+        BorrowlyLogger.info('Listing updated successfully in Supabase: ${item.id}. Result: $updatedRows');
+      } catch (e) {
+        BorrowlyLogger.warning('Supabase item update notice: $e');
+      }
+    }
+
+    try {
+      final cached = _localStorageService.getCachedNearbyItems();
+      final updated = cached.map((m) {
+        if (m['id'] == item.id) {
+          final map = Map<String, dynamic>.from(m);
+          map['title'] = item.title;
+          map['description'] = item.description;
+          map['category'] = item.category.name;
+          map['daily_price'] = item.dailyPrice;
+          map['is_free'] = item.isFree;
+          map['deposit_amount'] = item.depositAmount;
+          map['images'] = item.images;
+          map['location_name'] = item.locationName;
+          return map;
+        }
+        return m;
+      }).toList();
+      _localStorageService.cacheNearbyItems(updated);
+    } catch (_) {}
+
+    return item;
+  }
+
+  @override
+  Future<void> deleteItem(String id) async {
+    if (id.isEmpty) return;
+    BorrowlyLogger.event('Item: Delete Listing', parameters: {'itemId': id});
+
+    // 1. Local Hive Cache Cleanup & Persistent Deleted ID Tracking
+    try {
+      await _localStorageService.deleteCachedItem(id);
+    } catch (e) {
+      BorrowlyLogger.warning('Local cache item delete notice: $e');
+    }
+
+    // 2. Supabase Cloud Delete
+    final client = SupabaseService.client;
+    if (client != null && SupabaseService.isConfigured) {
+      try {
+        final deletedRows = await client.from('items').delete().eq('id', id).select();
+        BorrowlyLogger.info('Item $id permanently deleted from Supabase. Result: $deletedRows');
+      } catch (e) {
+        BorrowlyLogger.error('Supabase delete item error notice: $e');
+      }
+    }
+  }
+
+  @override
+  Future<void> toggleItemAvailability(String id, bool isAvailable) async {
+    if (id.isEmpty) return;
+    BorrowlyLogger.event('Item: Toggle Availability', parameters: {'itemId': id, 'isAvailable': isAvailable});
+
+    // 0. Set in-memory and persistent availability overrides
+    _availabilityOverrides[id] = isAvailable;
+    await _localStorageService.setAvailabilityOverride(id, isAvailable);
+
+    // 1. Update Hive Local Storage Cache immediately
+    try {
+      final cached = _localStorageService.getCachedNearbyItems();
+      final updated = cached.map((itemMap) {
+        if (itemMap['id'] == id) {
+          final m = Map<String, dynamic>.from(itemMap);
+          m['is_available'] = isAvailable;
+          return m;
+        }
+        return itemMap;
+      }).toList();
+      _localStorageService.cacheNearbyItems(updated);
+    } catch (e) {
+      BorrowlyLogger.warning('Local cache update availability notice: $e');
+    }
+
+    // 2. Update Supabase Database
+    final client = SupabaseService.client;
+    if (client != null && SupabaseService.isConfigured) {
+      try {
+        final res = await client.from('items').update({'is_available': isAvailable}).eq('id', id).select();
+        BorrowlyLogger.info('Item $id availability updated to $isAvailable in Supabase. Result: $res');
+      } catch (e) {
+        BorrowlyLogger.error('Supabase toggle availability notice: $e');
+      }
+    }
   }
 }

@@ -9,14 +9,18 @@ import '../repositories/item_repository.dart';
 class GetNearbyItemsParams extends Equatable {
   final double maxDistanceKm;
   final ItemCategory category;
+  final double? lat;
+  final double? lng;
 
   const GetNearbyItemsParams({
     required this.maxDistanceKm,
     this.category = ItemCategory.all,
+    this.lat,
+    this.lng,
   });
 
   @override
-  List<Object?> get props => [maxDistanceKm, category];
+  List<Object?> get props => [maxDistanceKm, category, lat, lng];
 }
 
 class GetNearbyItemsUseCase implements UseCase<List<ItemEntity>, GetNearbyItemsParams> {
@@ -30,6 +34,8 @@ class GetNearbyItemsUseCase implements UseCase<List<ItemEntity>, GetNearbyItemsP
       final items = await repository.getNearbyItems(
         maxDistanceKm: params.maxDistanceKm,
         category: params.category,
+        lat: params.lat,
+        lng: params.lng,
       );
       return Success(items);
     } catch (e) {

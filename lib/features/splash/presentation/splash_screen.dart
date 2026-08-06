@@ -90,7 +90,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
     // _navigateAfterAuth will skip if loading/initial, fire when ready.
     ref.listen<AuthState>(authProvider, (previous, next) {
       if (next.status != AuthStatus.initial && next.status != AuthStatus.loading) {
-        // Ensure minimum splash display time of 1 second before navigating.
         Future.delayed(const Duration(milliseconds: 1000), _navigateAfterAuth);
       }
     });
@@ -125,38 +124,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> with SingleTickerPr
                   width: 110,
                   height: 110,
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.6),
-                      width: 2,
-                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.45),
+                        color: AppColors.primary.withValues(alpha: 0.35),
                         blurRadius: 36,
-                        spreadRadius: 6,
+                        spreadRadius: 4,
                         offset: const Offset(0, 10),
                       ),
                     ],
                   ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 86,
-                        height: 86,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.primaryDark.withValues(alpha: 0.12),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.handshake_rounded,
-                        size: 56,
-                        color: AppColors.textPrimary,
-                      ),
-                    ],
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: Image.asset(
+                      'assets/icons/app_icon.png',
+                      width: 110,
+                      height: 110,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),

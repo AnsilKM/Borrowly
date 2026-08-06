@@ -8,6 +8,7 @@ class UserEntity extends Equatable {
   final String? phone;
   final int searchRadiusKm; // 1, 2, 3, or 5 km
   final bool isGuest;
+  final bool isNewUser;
   final DateTime createdAt;
 
   const UserEntity({
@@ -18,8 +19,16 @@ class UserEntity extends Equatable {
     this.phone,
     this.searchRadiusKm = 5,
     this.isGuest = false,
+    this.isNewUser = false,
     required this.createdAt,
   });
+
+  String get displayAvatarUrl {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty && !avatarUrl!.contains('ui-avatars.com')) {
+      return avatarUrl!;
+    }
+    return 'assets/icons/app_icon.png';
+  }
 
   factory UserEntity.guest() {
     return UserEntity(
@@ -27,6 +36,7 @@ class UserEntity extends Equatable {
       email: 'guest@borrowly.app',
       fullName: 'Guest User',
       isGuest: true,
+      isNewUser: false,
       searchRadiusKm: 5,
       createdAt: DateTime.now(),
     );
@@ -40,6 +50,7 @@ class UserEntity extends Equatable {
     String? phone,
     int? searchRadiusKm,
     bool? isGuest,
+    bool? isNewUser,
     DateTime? createdAt,
   }) {
     return UserEntity(
@@ -50,6 +61,7 @@ class UserEntity extends Equatable {
       phone: phone ?? this.phone,
       searchRadiusKm: searchRadiusKm ?? this.searchRadiusKm,
       isGuest: isGuest ?? this.isGuest,
+      isNewUser: isNewUser ?? this.isNewUser,
       createdAt: createdAt ?? this.createdAt,
     );
   }

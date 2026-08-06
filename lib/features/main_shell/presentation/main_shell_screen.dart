@@ -185,18 +185,8 @@ class _MainShellScreenState extends ConsumerState<MainShellScreen> {
                       return AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         height: topInset,
-                        decoration: BoxDecoration(
-                          color: isScrolled
-                              ? Colors.black.withValues(alpha: isDark ? 0.65 : 0.30)
-                              : Colors.transparent,
-                          border: isScrolled
-                              ? Border(
-                                  bottom: BorderSide(
-                                    color: (isDark ? AppColors.darkBorder : Colors.black).withValues(alpha: 0.18),
-                                    width: 0.5,
-                                  ),
-                                )
-                              : null,
+                        decoration: const BoxDecoration(
+                          color: Colors.transparent,
                         ),
                       );
                     },

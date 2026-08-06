@@ -10,7 +10,7 @@ import 'package:borrowly/features/auth/presentation/screens/login_screen.dart';
 import 'package:borrowly/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:borrowly/features/chat/presentation/screens/chat_screen.dart';
 import 'package:borrowly/features/chat/presentation/screens/conversation_list_screen.dart';
-import 'package:borrowly/features/design_system/presentation/design_system_screen.dart';
+
 import 'package:borrowly/features/home/presentation/home_screen.dart';
 import 'package:borrowly/features/item/presentation/screens/add_item_screen.dart';
 import 'package:borrowly/features/item/presentation/screens/item_details_screen.dart';
@@ -368,14 +368,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
-      GoRoute(
-        path: AppRoutes.designSystem,
-        pageBuilder: (context, state) => _buildSlideTransitionPage(
-          context: context,
-          state: state,
-          child: const DesignSystemScreen(),
-        ),
-      ),
+
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) {
           return MainShellScreen(navigationShell: navigationShell);

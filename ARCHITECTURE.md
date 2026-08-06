@@ -4,7 +4,7 @@
 
 **Borrowly** is a hyper-local peer-to-peer item sharing and borrowing community platform built with Flutter and Supabase. The application enables neighbors to list, discover, borrow, and lend household items, camping gear, tools, and electronics within a **1 km**, **2 km**, **3 km**, or **5 km (Max)** neighborhood radius.
 
-The platform is designed around a **Live Supabase Backend** (`https://wjgvdryrtgajenlcbjfy.supabase.co`) featuring **PostGIS spatial queries**, **Google Authentication ONLY**, **Real-Time WebSockets**, **Physical In-Person Cash Settlement**, **Structured Event Logging (`BorrowlyLogger`)**, **Riverpod unidirectional data flow**, **GoRouter shell branch navigation**, and a **glassmorphic design system**.
+The platform is designed around a **Live Supabase Backend** (`https://wjgvdryrtgajenlcbjfy.supabase.co`) featuring **PostGIS spatial queries**, **Supabase Storage Cloud Bucket Uploads (`item-images`)**, **Google Authentication ONLY**, **Real-Time WebSockets**, **Physical In-Person Cash Settlement**, **Item Lifecycle Management (Pause & Delete)**, **Structured Event Logging (`BorrowlyLogger`)**, **Riverpod unidirectional data flow**, **GoRouter shell branch navigation**, and a **locked Light Mode Scandinavian Sage glassmorphic design system**.
 
 ---
 
@@ -12,17 +12,19 @@ The platform is designed around a **Live Supabase Backend** (`https://wjgvdryrtg
 
 | Layer / Aspect | Framework / Tool | Purpose & Usage |
 | :--- | :--- | :--- |
-| **Framework & Language** | Flutter 3.x & Dart 3.x | Cross-platform UI engine targeting Android and iOS |
+| **Framework & Language** | Flutter 3.x & Dart 3.x | Cross-platform UI engine targeting Android, iOS, and Web |
 | **State Management & DI** | Flutter Riverpod | Reactive state management, dependency injection, and data providers |
 | **Navigation & Routing** | GoRouter 13.x | Declarative routing with `StatefulShellRoute.indexedStack` for stateful tab preservation |
-| **Backend & Database** | Supabase Flutter (`2.3.0`) | Live PostgreSQL database (`wjgvdryrtgajenlcbjfy`) with PostGIS, Real-Time WebSockets, and CDN Storage |
+| **Backend & Database** | Supabase Flutter (`2.3.0`) | Live PostgreSQL database (`wjgvdryrtgajenlcbjfy`) with PostGIS, Real-Time WebSockets, and Storage CDN |
+| **Cloud Storage Uploads** | `SupabaseStorageService` | Automatic cloud binary image uploads (`item-images` bucket) converting local photos to public CDN URLs |
+| **Item Lifecycle** | `deleteItem` & `toggleItemAvailability` | Allows item owners to pause listings (`is_available: false`) or permanently delete items |
 | **Authentication** | Google Sign-In (`google_sign_in`) | Single-click Google Sign-In authenticated via Supabase OAuth / ID Token (`signInWithIdToken`) |
 | **Payment Model** | Physical In-Person Cash Handover | Zero in-app gateway fees; payments and deposits settled physically during item pickup/return |
 | **Event Tracing** | `BorrowlyLogger` | Structured event logging (`🚀 [EVENT]`, `ℹ️ [INFO]`, `⚠️ [WARNING]`, `❌ [ERROR]`) |
 | **Database Auto-Seeder** | `_checkAndSeedSupabase` | Auto-populates realistic neighborhood items into Supabase `items` table if empty |
-| **Local Cache** | Hive & Hive Flutter | Fast key-value local caching for offline user preferences |
+| **Local Cache** | Hive & Hive Flutter | Fast key-value local caching for offline user preferences and <5ms item load fallback |
 | **Async Performance** | Dart Isolates (`compute()`) | Background thread execution for heavy item filtering, distance sorting, and search matching |
-| **Typography & Aesthetics** | Google Fonts (Outfit) | Modern typography with curated color tokens (`AppColors`) and glassmorphism |
+| **Theme Locking** | Locked Light Mode (`ThemeMode.light`) | Warm eggshell background (`#F5F2EB`), Scandinavian Sage (`#2E5A44`), and Outfit typography |
 
 ---
 
@@ -34,9 +36,9 @@ Borrowly strictly follows **Model-View-ViewModel (MVVM)** combined with **Unidir
 graph TD
     subgraph UI Layer ["UI Layer (Flutter Widgets & Screens)"]
         MainShellScreen["MainShellScreen (FloatingNavBar & Status Overlay)"]
-        HomeScreen["HomeScreen (Item Grid & Category Selector)"]
+        HomeScreen["HomeScreen (Item Grid & Radius Step Bar)"]
         SearchScreen["SearchScreen (Filter Sheet & Radius Slider)"]
-        ItemDetailsScreen["ItemDetailsScreen (Borrow Action & Owner Info)"]
+        ItemDetailsScreen["ItemDetailsScreen (Owner Controls / Borrow Action)"]
         ActivityScreen["ActivityScreen (Request Timeline & Status Pills)"]
         ConversationListScreen["ConversationListScreen (Chat Threads)"]
         LoginScreen["LoginScreen (Google Sign-In Button)"]
@@ -44,6 +46,10 @@ graph TD
 
     subgraph Logger ["Structured Event Logging"]
         BorrowlyLogger["BorrowlyLogger (Event Tracing & Analytics)"]
+    end
+
+    subgraph Storage ["Cloud Storage Service"]
+        SupabaseStorageService["SupabaseStorageService (Image Uploader)"]
     end
 
     subgraph Presentation & State Layer ["Riverpod Providers (Notifier / StateNotifier)"]
@@ -58,7 +64,7 @@ graph TD
         SupabaseAuth["Supabase Auth (Google OAuth Provider)"]
         PostGISDB["PostgreSQL + PostGIS (get_nearby_items)"]
         RealtimeSockets["Supabase Realtime WebSockets (Chat Channels)"]
-        StorageCDN["Supabase Storage (Item Images & Avatars)"]
+        StorageCDN["Supabase Storage (item-images Bucket)"]
     end
 
     %% Wiring
@@ -66,12 +72,14 @@ graph TD
     HomeScreen <--> NearbyItemsProvider
     SearchScreen <--> SearchNotifier
     ItemDetailsScreen <--> AuthNotifier
+    ItemDetailsScreen --> SupabaseStorageService
     ActivityScreen <--> BorrowRequestNotifier
     ConversationListScreen <--> ChatNotifier
 
     AuthNotifier --> BorrowlyLogger
     NearbyItemsProvider --> BorrowlyLogger
     SearchNotifier --> BorrowlyLogger
+    SupabaseStorageService --> StorageCDN
 
     AuthNotifier --> SupabaseAuth
     NearbyItemsProvider --> PostGISDB
@@ -105,16 +113,16 @@ erDiagram
         String id PK
         String title
         String description
-        String category "tools | camping | electronics | lawnCare | sports | books"
+        String category "tools | outdoors | electronics | lawnCare | sports | books"
         Double dailyPrice
         Boolean isFree
         Double depositAmount
-        List images
+        List images "Supabase CDN Public URLs"
         String ownerId FK
         String ownerName
         String ownerAvatar
         Double distanceKm
-        Boolean isAvailable
+        Boolean isAvailable "True = Visible | False = Paused/Borrowed"
         String locationName
         Double ratingScore
         Int reviewCount
@@ -159,23 +167,23 @@ erDiagram
 ```
 lib/
 ├── app/                         # Global Application Setup & Configuration
-│   ├── app.dart                 # Root MaterialApp widget & Riverpod router listener
+│   ├── app.dart                 # Root MaterialApp widget (Locked Light Theme) & Riverpod listener
 │   ├── router/                  # GoRouter configuration & StatefulShellRoute definition
-│   └── theme/                   # Aesthetic Design System (Colors, Typography, Spacing)
+│   └── theme/                   # Aesthetic Design System (AppColors, AppTypography, AppSpacing)
 ├── core/                        # Core Shared Infrastructure
-│   ├── network/                 # Supabase client (`SupabaseService`) & live URL configuration
+│   ├── network/                 # Supabase Service & SupabaseStorageService (Image Uploader)
 │   ├── storage/                 # Hive local storage service & theme providers
 │   ├── utils/                   # BorrowlyLogger, Result pattern & Responsive breakpoints
-│   └── widgets/                 # Reusable UI Components (Cards, Buttons, Toasts, Badges)
+│   └── widgets/                 # Reusable UI Components (Cards, Buttons, Toasts, Badges, LegalWebView)
 └── features/                    # Feature-Sliced Modules
     ├── auth/                    # Google Sign-In ONLY, Auth State Notifiers, & Login Screen
     ├── activity/                # Request History, Status Timeline, & Activity Screen
     ├── chat/                    # Real-time Conversation List & Chat Screens
-    ├── home/                    # Home Dashboard, Category Selectors, & Item Feed
-    ├── item/                    # Item Details, Add Item Screen, & Item Cards (SupabaseItemRepository)
+    ├── home/                    # Home Dashboard, Radius Step Bar, & Item Feed
+    ├── item/                    # Item Details (Owner Actions: Pause & Delete), Add Item, & Item Cards
     ├── main_shell/              # Shell Screen, Floating Nav Bar, & Back Dispatcher
     ├── notification/            # Notification Center & Unread Badges
     ├── profile/                 # Profile Settings & Logout Confirmation Modal
     ├── search/                  # Search Filter Screen, Radius Slider, & Grid
-    └── splash/                  # Instant Non-Blocking Splash Animation
+    └── splash/                  # Instant Animated Splash Screen (Unified Native Launch)
 ```

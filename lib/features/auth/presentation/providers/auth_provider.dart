@@ -163,7 +163,11 @@ class AuthController extends StateNotifier<AuthState> {
 
     final result = await _updateProfileUseCase(updated);
     result.fold(
-      onSuccess: (saved) => state = AuthState(status: AuthStatus.authenticated, user: saved),
+      onSuccess: (saved) {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        state = AuthState(status: AuthStatus.authenticated, user: saved);
+      },
       onError: (failure) => state = AuthState(status: AuthStatus.error, errorMessage: failure.message),
     );
   }
@@ -173,7 +177,11 @@ class AuthController extends StateNotifier<AuthState> {
     final updated = state.user!.copyWith(avatarUrl: avatarUrl);
     final result = await _updateProfileUseCase(updated);
     result.fold(
-      onSuccess: (saved) => state = AuthState(status: AuthStatus.authenticated, user: saved),
+      onSuccess: (saved) {
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+        state = AuthState(status: AuthStatus.authenticated, user: saved);
+      },
       onError: (failure) => state = AuthState(status: AuthStatus.error, errorMessage: failure.message),
     );
   }
