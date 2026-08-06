@@ -14,35 +14,32 @@ class HomeSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-      child: BorrowlyCard(
-        variant: BorrowlyCardVariant.warm,
-        borderRadius: AppRadii.borderPill,
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg,
-          vertical: AppSpacing.sm + 2,
-        ),
-        onTap: () => context.push(AppRoutes.search),
-        child: Row(
-          children: [
-            Icon(
-              Icons.search_rounded,
-              size: 22,
-              color: isDark ? AppColors.darkTextSecondary : AppColors.olive,
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                'Search items, categories...',
-                style: AppTypography.bodyMedium(isDark).copyWith(
-                  color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                  fontSize: 14,
-                ),
+    return BorrowlyCard(
+      variant: BorrowlyCardVariant.warm,
+      borderRadius: AppRadii.borderPill,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + 2,
+      ),
+      onTap: () => context.push(AppRoutes.search),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            size: 22,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.olive,
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Search items, categories...',
+              style: AppTypography.bodyMedium(isDark).copyWith(
+                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                fontSize: 14,
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

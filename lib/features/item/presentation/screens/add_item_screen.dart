@@ -438,6 +438,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                     label: 'Item Title',
                     hintText: 'e.g. Bosch Drill Machine 18V',
                     controller: _titleController,
+                    textInputAction: TextInputAction.next,
                     onChanged: formNotifier.setTitle,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -448,6 +449,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                     hintText: 'Condition, accessories included, usage instructions...',
                     maxLines: 3,
                     controller: _descriptionController,
+                    textInputAction: TextInputAction.next,
                     onChanged: formNotifier.setDescription,
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -548,6 +550,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                       hintText: '120',
                       keyboardType: TextInputType.number,
                       controller: _priceController,
+                      textInputAction: TextInputAction.next,
                       prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
                       onChanged: (val) {
                         final price = double.tryParse(val) ?? 0.0;
@@ -563,6 +566,7 @@ class _AddItemScreenState extends ConsumerState<AddItemScreen> {
                     hintText: '500',
                     keyboardType: TextInputType.number,
                     controller: _depositController,
+                    textInputAction: TextInputAction.done,
                     prefixIcon: const Icon(Icons.shield_outlined, size: 18),
                     onChanged: (val) {
                       final deposit = double.tryParse(val) ?? 0.0;

@@ -68,16 +68,17 @@ class FloatingNavigationBar extends StatelessWidget {
                       onTap: () => onItemTapped(0),
                     ),
                     _FloatingNavItem(
-                      icon: Icons.sync_alt_rounded,
-                      activeIcon: Icons.sync_alt_rounded,
-                      label: 'Activity',
+                      icon: unreadNotifs > 0 ? Icons.mark_chat_unread_outlined : Icons.chat_bubble_outline_rounded,
+                      activeIcon: unreadNotifs > 0 ? Icons.mark_chat_unread_rounded : Icons.chat_bubble_rounded,
+                      label: 'Chat',
                       isSelected: selectedIndex == 1,
+                      badgeCount: unreadNotifs,
                       onTap: () => onItemTapped(1),
                     ),
 
                     // Center Floating Add Button (+ Action)
                     GestureDetector(
-                      onTap: onAddPressed,
+                      onTap: () => onItemTapped(2),
                       child: Container(
                         width: 48,
                         height: 48,
@@ -102,19 +103,18 @@ class FloatingNavigationBar extends StatelessWidget {
                     ),
 
                     _FloatingNavItem(
-                      icon: unreadNotifs > 0 ? Icons.mark_chat_unread_outlined : Icons.chat_bubble_outline_rounded,
-                      activeIcon: unreadNotifs > 0 ? Icons.mark_chat_unread_rounded : Icons.chat_bubble_rounded,
-                      label: 'Messages',
-                      isSelected: selectedIndex == 2,
-                      badgeCount: unreadNotifs,
-                      onTap: () => onItemTapped(2),
+                      icon: Icons.inventory_2_outlined,
+                      activeIcon: Icons.inventory_2_rounded,
+                      label: 'Listings',
+                      isSelected: selectedIndex == 3,
+                      onTap: () => onItemTapped(3),
                     ),
                     _FloatingNavItem(
                       icon: Icons.person_outline_rounded,
                       activeIcon: Icons.person_rounded,
                       label: 'Profile',
-                      isSelected: selectedIndex == 3,
-                      onTap: () => onItemTapped(3),
+                      isSelected: selectedIndex == 4,
+                      onTap: () => onItemTapped(4),
                     ),
                   ],
                 ),

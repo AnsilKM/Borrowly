@@ -106,33 +106,52 @@ CREATE TABLE IF NOT EXISTS public.borrow_requests (
 );
 
 ALTER TABLE public.borrow_requests ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow insert to borrow requests" ON public.borrow_requests;
-CREATE POLICY "Allow insert to borrow requests" ON public.borrow_requests FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Allow select to borrow requests" ON public.borrow_requests;
-CREATE POLICY "Allow select to borrow requests" ON public.borrow_requests FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can view their own borrow requests" ON public.borrow_requests;
+CREATE POLICY "Users can view their own borrow requests"
+  ON public.borrow_requests FOR SELECT
+  USING (auth.uid() = borrower_id OR auth.uid() = owner_id);
 
--- 7. CONVERSATIONS & MESSAGES TABLES
+DROP POLICY IF EXISTS "Users can insert borrow requests" ON public.borrow_requests;
+CREATE POLICY "Users can insert borrow requests"
+  ON public.borrow_requests FOR INSERT
+  WITH CHECK (auth.uid() = borrower_id);
+
+DROP POLICY IF EXISTS "Owners can update their borrow requests" ON public.borrow_requests;
+CREATE POLICY "Owners can update their borrow requests"
+  ON public.borrow_requests FOR UPDATE
+  USING (auth.uid() = borrower_id OR auth.uid() = owner_id);
+
+-- 7. CONVERSATIONS & MESSAGES TABLES (Robust Peer-to-Peer Chat)
 CREATE TABLE IF NOT EXISTS public.conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   item_id UUID REFERENCES public.items(id) ON DELETE SET NULL,
   item_title TEXT NOT NULL,
   item_image TEXT NOT NULL,
-  other_participant_id UUID NOT NULL,
-  other_participant_name TEXT NOT NULL,
-  other_participant_avatar TEXT,
+  borrower_id UUID NOT NULL REFERENCES auth.users(id),
+  owner_id UUID NOT NULL REFERENCES auth.users(id),
   last_message TEXT DEFAULT '',
   last_message_time TIMESTAMPTZ DEFAULT NOW(),
-  unread_count INT DEFAULT 0
+  unread_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  -- Ensure only one conversation exists between these two for this specific item
+  UNIQUE(item_id, borrower_id, owner_id)
 );
 
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow conversations access" ON public.conversations;
-CREATE POLICY "Allow conversations access" ON public.conversations FOR ALL USING (true);
+DROP POLICY IF EXISTS "Users can view their own conversations" ON public.conversations;
+CREATE POLICY "Users can view their own conversations"
+  ON public.conversations FOR SELECT
+  USING (auth.uid() = borrower_id OR auth.uid() = owner_id);
+
+DROP POLICY IF EXISTS "Users can insert conversations" ON public.conversations;
+CREATE POLICY "Users can insert conversations"
+  ON public.conversations FOR INSERT
+  WITH CHECK (auth.uid() = borrower_id OR auth.uid() = owner_id);
 
 CREATE TABLE IF NOT EXISTS public.messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL,
+  sender_id UUID NOT NULL REFERENCES auth.users(id),
   sender_name TEXT NOT NULL,
   text TEXT NOT NULL,
   image_url TEXT,
@@ -141,8 +160,28 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Allow messages access" ON public.messages;
-CREATE POLICY "Allow messages access" ON public.messages FOR ALL USING (true);
+DROP POLICY IF EXISTS "Users can view messages in their conversations" ON public.messages;
+CREATE POLICY "Users can view messages in their conversations"
+  ON public.messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.conversations
+      WHERE id = conversation_id
+      AND (auth.uid() = borrower_id OR auth.uid() = owner_id)
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can send messages to their conversations" ON public.messages;
+CREATE POLICY "Users can send messages to their conversations"
+  ON public.messages FOR INSERT
+  WITH CHECK (
+    auth.uid() = sender_id AND
+    EXISTS (
+      SELECT 1 FROM public.conversations
+      WHERE id = conversation_id
+      AND (auth.uid() = borrower_id OR auth.uid() = owner_id)
+    )
+  );
 
 -- Enable Realtime WebSockets for Messages
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;

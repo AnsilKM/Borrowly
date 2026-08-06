@@ -9,14 +9,13 @@ import '../../../app/theme/app_spacing.dart';
 import '../../../app/theme/app_typography.dart';
 import '../../../core/location/location_provider.dart';
 import '../../../core/utils/responsive_layout.dart';
-import 'package:borrowly/core/utils/avatar_provider_util.dart';
 import '../../../core/widgets/borrowly_badge.dart';
-import '../../../core/widgets/borrowly_button.dart';
 import '../../../core/widgets/borrowly_card.dart';
 import '../../../core/widgets/borrowly_empty_state.dart';
 import '../../auth/presentation/providers/auth_provider.dart';
 import '../../item/presentation/providers/home_items_provider.dart';
 import '../../item/presentation/providers/wishlist_provider.dart';
+import '../../notification/presentation/providers/notification_provider.dart';
 import '../../item/presentation/widgets/category_selection_bottom_sheet.dart';
 import '../../item/presentation/widgets/category_selector.dart';
 import '../../item/presentation/widgets/home_search_bar.dart';
@@ -582,9 +581,10 @@ class _HomeScreenPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ],
                 ),
 
-                // Actions: Wishlist Heart & User Avatar / Sign In
+                // Actions: Wishlist Heart & Notification Bell (Compact Small Header Icons)
                 Row(
                   children: [
+                    // 1. Wishlist Icon Button
                     Consumer(
                       builder: (context, ref, child) {
                         final wishlistedCount =
@@ -593,6 +593,8 @@ class _HomeScreenPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
                           clipBehavior: Clip.none,
                           children: [
                             Container(
+                              width: 34,
+                              height: 34,
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? AppColors.darkSurface
@@ -601,11 +603,15 @@ class _HomeScreenPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
                                 border: Border.all(
                                   color: wishlistedCount > 0
                                       ? AppColors.danger.withValues(alpha: 0.4)
-                                      : Colors.transparent,
-                                  width: 1.5,
+                                      : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.borderSubtle),
+                                  width: 1,
                                 ),
                               ),
                               child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
                                 icon: Icon(
                                   wishlistedCount > 0
                                       ? Icons.favorite_rounded
@@ -626,20 +632,20 @@ class _HomeScreenPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
                                 top: -2,
                                 right: -2,
                                 child: Container(
-                                  padding: const EdgeInsets.all(4),
+                                  padding: const EdgeInsets.all(3),
                                   decoration: const BoxDecoration(
                                     color: AppColors.danger,
                                     shape: BoxShape.circle,
                                   ),
                                   constraints: const BoxConstraints(
-                                    minWidth: 16,
-                                    minHeight: 16,
+                                    minWidth: 14,
+                                    minHeight: 14,
                                   ),
                                   child: Text(
                                     '$wishlistedCount',
                                     style: const TextStyle(
                                       color: Colors.white,
-                                      fontSize: 9,
+                                      fontSize: 8,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     textAlign: TextAlign.center,
@@ -651,30 +657,79 @@ class _HomeScreenPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
                       },
                     ),
                     const SizedBox(width: AppSpacing.xs),
-                    if (authState.isGuest)
-                      BorrowlyButton(
-                        label: 'Sign In',
-                        size: BorrowlyButtonSize.small,
-                        variant: BorrowlyButtonVariant.outline,
-                        onPressed: () => context.push(AppRoutes.login),
-                      )
-                    else
-                      GestureDetector(
-                        onTap: () => context.go(AppRoutes.profile),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border:
-                                Border.all(color: AppColors.primary, width: 2),
-                            boxShadow: AppShadows.subtle,
-                          ),
-                          child: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: AppColors.surfaceWarm,
-                            backgroundImage: getAvatarImageProvider(user?.displayAvatarUrl),
-                          ),
-                        ),
-                      ),
+
+                    // 2. Notification Bell Icon Button
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final unreadNotifs =
+                            ref.watch(unreadNotificationCountProvider);
+                        return Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? AppColors.darkSurface
+                                    : AppColors.surfaceWarm,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: unreadNotifs > 0
+                                      ? AppColors.primary.withValues(alpha: 0.4)
+                                      : (isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.borderSubtle),
+                                  width: 1,
+                                ),
+                              ),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: Icon(
+                                  unreadNotifs > 0
+                                      ? Icons.notifications_active_rounded
+                                      : Icons.notifications_none_rounded,
+                                  color: unreadNotifs > 0
+                                      ? AppColors.primary
+                                      : (isDark
+                                          ? Colors.white70
+                                          : AppColors.textSecondary),
+                                  size: 18,
+                                ),
+                                onPressed: () =>
+                                    context.push(AppRoutes.notifications),
+                              ),
+                            ),
+                            if (unreadNotifs > 0)
+                              Positioned(
+                                top: -2,
+                                right: -2,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 14,
+                                    minHeight: 14,
+                                  ),
+                                  child: Text(
+                                    '$unreadNotifs',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ],

@@ -13,7 +13,6 @@ import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/core/widgets/borrowly_image_picker_bottom_sheet.dart';
 import 'package:borrowly/core/utils/avatar_provider_util.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
-import 'package:borrowly/features/borrow/presentation/providers/borrow_provider.dart';
 import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
 
 import 'package:borrowly/core/location/location_provider.dart';
@@ -42,17 +41,7 @@ class ProfileScreen extends ConsumerWidget {
     final userEmail = (user != null && user.email.isNotEmpty) ? user.email : 'guest@borrowly.app';
     final userPhone = _formatPhoneNumber(user?.phone);
 
-    final borrowerRequestsAsync = authState.isGuest ? null : ref.watch(userBorrowRequestsProvider(false));
     final userListingsAsync = authState.isGuest ? null : ref.watch(userListingsProvider);
-
-    final borrowsCountStr = authState.isGuest
-        ? '0'
-        : (borrowerRequestsAsync?.when(
-              data: (reqs) => '${reqs.length}',
-              loading: () => '...',
-              error: (_, __) => '0',
-            ) ?? '0');
-
     final userItems = userListingsAsync?.when(
           data: (items) => items,
           loading: () => null,
@@ -286,20 +275,8 @@ class ProfileScreen extends ConsumerWidget {
                 children: [
                   Expanded(
                     child: _StatCard(
-                      value: borrowsCountStr,
-                      label: 'Borrows',
-                      icon: Icons.handshake_rounded,
-                      isDark: isDark,
-                      onTap: authState.isGuest
-                          ? () => BorrowlyToast.show(context, 'Sign in to view borrow history', icon: Icons.lock_outline_rounded)
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs + 2),
-                  Expanded(
-                    child: _StatCard(
                       value: sharedCountStr,
-                      label: 'Shared',
+                      label: 'Listings',
                       icon: Icons.inventory_2_rounded,
                       isDark: isDark,
                       onTap: authState.isGuest
@@ -337,22 +314,6 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
                     _ProfileMenuItem(
-                      icon: Icons.inventory_2_outlined,
-                      title: 'My Listings',
-                      subtitle: authState.isGuest
-                          ? 'Sign in to view your posted items'
-                          : '${userItems?.length ?? 0} active listing(s)',
-                      isDark: isDark,
-                      onTap: () {
-                        if (authState.isGuest) {
-                          context.push(AppRoutes.login);
-                        } else {
-                          context.push(AppRoutes.myListings);
-                        }
-                      },
-                    ),
-                    Divider(height: 1, color: isDark ? AppColors.darkBorder : AppColors.border),
-                    _ProfileMenuItem(
                       icon: Icons.description_outlined,
                       title: 'Terms & Conditions',
                       subtitle: 'Usage rules & physical handover policy',
@@ -372,15 +333,23 @@ class ProfileScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AppSpacing.lg),
 
-              // Actions
-              if (authState.isGuest) ...[
+              // Actions: Sign In (Guest) vs Log Out (Logged In)
+              if (authState.isGuest)
                 BorrowlyButton(
                   label: 'Sign In or Register',
                   isFullWidth: true,
-                  icon: const Icon(Icons.login_rounded),
+                  variant: BorrowlyButtonVariant.primary,
+                  icon: const Icon(Icons.login_rounded, size: 20),
                   onPressed: () => context.push(AppRoutes.login),
+                )
+              else
+                BorrowlyButton(
+                  label: 'Log Out Session',
+                  isFullWidth: true,
+                  variant: BorrowlyButtonVariant.outline,
+                  icon: const Icon(Icons.logout_rounded, color: AppColors.danger, size: 20),
+                  onPressed: () => _showLogoutDialog(context, ref),
                 ),
-              ],
               const SizedBox(height: 100),
             ],
           ),

@@ -108,6 +108,9 @@ class SupabaseAuthRepository implements AuthRepository {
         );
 
         BorrowlyLogger.info('Opening Google Sign-In native account picker...');
+        try {
+          await googleSignIn.signOut();
+        } catch (_) {}
         final googleUser = await googleSignIn.signIn();
 
         if (googleUser != null) {

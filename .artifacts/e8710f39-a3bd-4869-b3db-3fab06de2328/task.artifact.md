@@ -1,0 +1,6 @@
+- [x] Update `supabase_schema.sql` with improved `conversations` table and RLS policies
+- [x] Update `ConversationEntity` to include `borrowerId` and `ownerId`
+- [x] Update `SupabaseChatRepository` mapping and add `getOrCreateConversation`
+- [x] Update `chat_provider.dart` to handle authenticated user ID
+- [x] Refactor `ItemDetailsScreen` chat button to resolve conversation before navigation
+- [x] Verify message sending functionality

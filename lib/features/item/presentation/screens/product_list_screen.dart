@@ -39,6 +39,7 @@ class ProductListScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
+        automaticallyImplyLeading: !isMyListings,
         title: Text(
           title,
           style: AppTypography.headingMedium(isDark),

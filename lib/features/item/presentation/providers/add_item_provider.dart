@@ -192,7 +192,7 @@ class AddItemNotifier extends StateNotifier<AddItemFormState> {
       'ownerId': ownerId,
     });
 
-    final result = await _addItemUseCase(newItem);
+    final result = await _addItemUseCase(AddItemParams(item: newItem, lat: lat, lng: lng));
 
     return result.fold(
       onSuccess: (_) {

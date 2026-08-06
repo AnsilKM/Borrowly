@@ -5,6 +5,7 @@ import 'package:borrowly/features/chat/domain/entities/conversation_entity.dart'
 import 'package:borrowly/features/chat/domain/repositories/chat_repository.dart';
 import 'package:borrowly/features/chat/domain/usecases/get_conversations_usecase.dart';
 import 'package:borrowly/features/chat/domain/usecases/send_message_usecase.dart';
+import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return SupabaseChatRepository();
@@ -20,7 +21,12 @@ final sendMessageUseCaseProvider = Provider<SendMessageUseCase>((ref) {
 
 final conversationsProvider = FutureProvider<List<ConversationEntity>>((ref) async {
   final usecase = ref.watch(getConversationsUseCaseProvider);
-  final result = await usecase('guest_user_id');
+  final authState = ref.watch(authProvider);
+  final userId = authState.user?.id;
+
+  if (userId == null) return [];
+
+  final result = await usecase(userId);
   return result.fold(
     onSuccess: (list) => list,
     onError: (failure) => throw Exception(failure.message),

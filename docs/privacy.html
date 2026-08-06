@@ -11,20 +11,29 @@
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <style>
     :root {
       color-scheme: light !important;
-      --primary: #2E5A44;
-      --primary-dark: #1E3E2F;
-      --bg: #F5F2EB;
+      /* Borrowly Modern Glassmorphism System Tokens */
+      --primary: #0D9488;
+      --primary-dark: #0F766E;
+      --primary-light: #14B8A6;
+      --primary-subtle: rgba(13, 148, 136, 0.08);
+      --accent: #F59E0B;
+      --bg: #FDFBF7;
+      --bg-dark: #0E1726;
       --surface: #FFFFFF;
-      --text: #1C2420;
-      --text-muted: #708076;
-      --border: #D5CDBE;
+      --surface-glass: rgba(255, 255, 255, 0.85);
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --border-teal: rgba(13, 148, 136, 0.25);
+      --radius-md: 16px;
       --radius-lg: 24px;
-      --shadow-md: 0 20px 40px rgba(28, 36, 32, 0.08);
+      --radius-pill: 9999px;
+      --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.08);
     }
 
     * {
@@ -39,137 +48,199 @@
       color: var(--text);
       line-height: 1.7;
       padding: 40px 20px;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 800px;
+      max-width: 860px;
       margin: 0 auto;
-      background: var(--surface);
+      background: var(--surface-glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-radius: var(--radius-lg);
-      padding: 40px;
-      border: 1px solid var(--border);
+      padding: 48px;
+      border: 1px solid var(--border-teal);
       box-shadow: var(--shadow-md);
     }
 
     .header {
       border-bottom: 2px solid var(--border);
-      padding-bottom: 20px;
-      margin-bottom: 30px;
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 14px;
+      text-decoration: none;
     }
 
     .logo-badge {
       width: 44px;
       height: 44px;
-      background: transparent;
-      border-radius: 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 8px 18px rgba(13, 148, 136, 0.3);
     }
 
-    .logo-badge img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: 12px;
+    .brand-title {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      color: var(--primary);
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      border-radius: var(--radius-pill);
+      background: var(--primary-subtle);
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      border: 1px solid var(--border-teal);
+      transition: all 0.2s ease;
+    }
+
+    .btn-back:hover {
+      background: var(--primary);
+      color: #FFFFFF;
     }
 
     h1 {
-      font-size: 28px;
-      font-weight: 800;
+      font-size: 32px;
+      font-weight: 900;
       color: var(--primary-dark);
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
     }
 
     .last-updated {
       color: var(--text-muted);
       font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 24px;
     }
 
     h2 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-top: 28px;
+      font-size: 21px;
+      font-weight: 800;
+      margin-top: 32px;
       margin-bottom: 12px;
       color: var(--primary-dark);
     }
 
-    p {
-      margin-bottom: 16px;
-      color: #383D2C;
+    p, li {
+      color: var(--text);
       font-size: 15.5px;
+      margin-bottom: 14px;
     }
 
     ul {
-      margin-left: 24px;
-      margin-bottom: 16px;
-      color: #383D2C;
+      padding-left: 24px;
+      margin-bottom: 20px;
     }
 
     li {
       margin-bottom: 8px;
     }
 
-    .back-btn {
-      display: inline-block;
-      margin-top: 30px;
-      padding: 10px 20px;
-      background-color: var(--primary);
-      color: white;
-      text-decoration: none;
-      border-radius: 9999px;
-      font-weight: 600;
-      font-size: 14px;
+    .highlight-box {
+      background: var(--primary-subtle);
+      border-left: 4px solid var(--primary);
+      padding: 18px 20px;
+      border-radius: var(--radius-md);
+      margin: 24px 0;
+      font-weight: 500;
     }
 
-    .back-btn:hover {
-      background-color: var(--primary-dark);
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
+
   <div class="container">
     <div class="header">
-      <div class="brand">
+      <a href="index.html" class="brand">
         <div class="logo-badge">
-          <img src="app_icon.png" alt="Borrowly Icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
         </div>
-        <h1>Borrowly</h1>
-      </div>
-      <h2>Privacy Policy</h2>
-      <p class="last-updated">Last Updated: August 3, 2026</p>
+        <div class="brand-title">Borrow<span>ly</span></div>
+      </a>
+
+      <a href="index.html" class="btn-back">
+        ← Back to Home
+      </a>
     </div>
 
-    <p>At <strong>Borrowly</strong>, protecting your privacy and securing your local neighborhood data is our top priority. This Privacy Policy explains how we collect, use, and protect your information when using the Borrowly app and services.</p>
+    <h1>Privacy Policy</h1>
+    <div class="last-updated">Last Updated: August 6, 2026</div>
+
+    <div class="highlight-box">
+      <strong>Core Commitment:</strong> Borrowly is designed with privacy at its core. We only collect essential account details (Google OAuth) and approximate location data to show you nearby items from neighbors in your radius.
+    </div>
 
     <h2>1. Information We Collect</h2>
+    <p>To provide peer-to-peer neighborhood sharing, Borrowly collects:</p>
     <ul>
-      <li><strong>Account Information:</strong> Name, email address, and profile picture provided during Google Sign-In or account creation.</li>
-      <li><strong>Hyper-Local Distance Radius:</strong> Coarse distance radius (1–5 km) used exclusively for displaying nearby item listings. Your exact GPS address is never publicly displayed.</li>
-      <li><strong>Item Listings & Messages:</strong> Product details, photos, and real-time chat messages sent between neighbors to coordinate physical item handovers.</li>
+      <li><strong>Account & Profile Information:</strong> Name, email address, and profile photo fetched via Google Sign-In authentication.</li>
+      <li><strong>Approximate Location Data:</strong> Device GPS coordinates (or neighborhood names) used strictly for executing PostGIS geospatial distance queries to display items within your selected search radius (e.g., 0.5 km to 15 km).</li>
+      <li><strong>Item Listings & Messages:</strong> Photos, descriptions, daily rates, security deposit amounts, and real-time chat messages sent to item owners.</li>
     </ul>
 
     <h2>2. How We Use Your Information</h2>
-    <p>We use your information strictly to:</p>
+    <p>We use your information solely for the following purposes:</p>
     <ul>
-      <li>Display nearby item listings within your selected distance radius (1–5 km).</li>
-      <li>Enable real-time messaging between item Owners and Borrowers.</li>
-      <li>Maintain account security and prevent fraudulent listings.</li>
+      <li>Exclusively calculating distance between neighbors for item borrowing requests.</li>
+      <li>Connecting borrowers with item owners via real-time messaging threads.</li>
+      <li>Maintaining platform security and preventing fraudulent account creation.</li>
     </ul>
 
-    <h2>3. Zero Third-Party Data Selling</h2>
-    <p>Borrowly does not sell, rent, or trade your personal data, location information, or messaging history with any third-party advertisers.</p>
+    <h2>3. Data Storage & Security</h2>
+    <p>Your data is securely transmitted over HTTPS and stored in our PostgreSQL backend hosted on Supabase with strict Row Level Security (RLS) policies. Local device caching utilizes encrypted Hive isolates for fast offline access.</p>
 
-    <h2>4. Data Storage & Security</h2>
-    <p>Your session and user profile data are secured via Supabase PostgreSQL authentication with Row-Level Security (RLS) policies, alongside encrypted local Hive caching (< 5ms response time).</p>
+    <h2>4. Physical Settlement & Payments</h2>
+    <p>Borrowly operates on a physical cash and in-person settlement model. Borrowly does not process, record, or store any digital payment gateway credentials, credit card numbers, or banking details.</p>
 
-    <h2>5. Contact Us</h2>
+    <h2>5. Third-Party Services</h2>
+    <p>We integrate with trusted infrastructure providers:</p>
+    <ul>
+      <li><strong>Google Authentication:</strong> For secure identity verification.</li>
+      <li><strong>Supabase:</strong> For database hosting, authentication, and storage CDN.</li>
+    </ul>
+
+    <h2>6. Contact Us</h2>
+    <p>If you have any questions or requests regarding your data privacy, please contact our support team at <strong>privacy@borrowly.com</strong>.</p>
   </div>
+
+  <footer>
+    © 2026 Borrowly • Peer-to-Peer Neighborhood Sharing Platform
+  </footer>
+
 </body>
 </html>

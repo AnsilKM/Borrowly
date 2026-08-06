@@ -109,8 +109,7 @@ class SupabaseItemRepository implements ItemRepository {
             rows = await client
                 .from('items')
                 .select()
-                .lte('distance_km', maxDistanceKm)
-                .order('distance_km', ascending: true);
+                .order('created_at', ascending: false);
           }
         } else {
           // ── Fallback: static distance_km column (no GPS) ─────────────────
@@ -118,8 +117,7 @@ class SupabaseItemRepository implements ItemRepository {
           rows = await client
               .from('items')
               .select()
-              .lte('distance_km', maxDistanceKm)
-              .order('distance_km', ascending: true);
+              .order('created_at', ascending: false);
         }
 
         final deletedIds = _localStorageService.getDeletedItemIds();
@@ -296,7 +294,7 @@ class SupabaseItemRepository implements ItemRepository {
   }
 
   @override
-  Future<ItemEntity> addItem(ItemEntity item) async {
+  Future<ItemEntity> addItem(ItemEntity item, {double? lat, double? lng}) async {
     BorrowlyLogger.event('Item: Listing New Item', parameters: {
       'title': item.title,
       'category': item.category.name,
@@ -330,6 +328,10 @@ class SupabaseItemRepository implements ItemRepository {
         // Upload local device images to Supabase Storage Bucket ('item-images')
         final cloudImageUrls = await SupabaseStorageService.uploadItemImages(item.images);
 
+        final pointWkt = (lat != null && lng != null)
+            ? 'POINT($lng $lat)'
+            : 'POINT(75.8285 11.2548)';
+
         final row = {
           'title': item.title,
           'description': item.description,
@@ -341,9 +343,8 @@ class SupabaseItemRepository implements ItemRepository {
           'owner_id': validOwnerId,
           'owner_name': item.ownerName,
           'location_name': item.locationName,
-          'location': 'POINT(76.2711 9.9312)',
+          'location': pointWkt,
           'is_available': true,
-          'is_edited': false,
         };
 
         final response = await client.from('items').insert(row).select().single();

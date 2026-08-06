@@ -22,6 +22,8 @@ class BorrowlyTextField extends StatelessWidget {
   final VoidCallback? onTap;
 
   final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
 
   const BorrowlyTextField({
     super.key,
@@ -32,6 +34,8 @@ class BorrowlyTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.textCapitalization = TextCapitalization.sentences,
+    this.textInputAction,
+    this.onFieldSubmitted,
     this.prefixIcon,
     this.suffixIcon,
     this.onChanged,
@@ -46,6 +50,9 @@ class BorrowlyTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final effectiveInputAction = textInputAction ??
+        (maxLines == 1 ? TextInputAction.next : TextInputAction.newline);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,6 +75,13 @@ class BorrowlyTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
+          textInputAction: effectiveInputAction,
+          onFieldSubmitted: onFieldSubmitted ??
+              (val) {
+                if (effectiveInputAction == TextInputAction.next) {
+                  FocusScope.of(context).nextFocus();
+                }
+              },
           onChanged: onChanged,
           validator: validator,
           maxLines: maxLines,

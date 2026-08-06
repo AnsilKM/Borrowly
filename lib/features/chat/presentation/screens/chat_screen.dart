@@ -128,6 +128,50 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
 
+            // One-Tap Quick Suggestion Chips
+            Container(
+              height: 42,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              color: isDark ? AppColors.darkSurfaceSubtle : AppColors.surfaceWarm,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                children: [
+                  'Is this item available?',
+                  'Can I pick this up today?',
+                  'Where is the pickup location?',
+                  'Yes, it is available!',
+                  'Currently lent out, available soon.',
+                  'Pickup near main street.',
+                ].map((suggestion) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ActionChip(
+                      label: Text(
+                        suggestion,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.primaryLight : AppColors.primaryDark,
+                        ),
+                      ),
+                      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                      onPressed: () {
+                        chatController.sendTextMessage(
+                          text: suggestion,
+                          senderId: currentUserId,
+                          senderName: user?.fullName ?? 'Alex Morgan',
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
             // Chat Input Bar
             Container(
               padding: const EdgeInsets.all(AppSpacing.sm),

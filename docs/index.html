@@ -4,38 +4,43 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
-  <title>Borrowly — Hyper-Local Neighbor Sharing</title>
+  <title>Borrowly — Hyper-Local Neighbor Borrowing & Sharing Platform</title>
+  <meta name="description" content="Borrowly is the modern hyper-local peer-to-peer neighborhood sharing app. Rent or borrow tools, outdoor gear, and household items nearby with zero digital payment fees.">
+  
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="app_icon.png">
   
   <!-- Google Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <style>
     :root {
       color-scheme: light !important;
-      /* Borrowly Master Design System Tokens */
-      --primary: #2E5A44;
-      --primary-dark: #1E3E2F;
-      --primary-light: #447C60;
-      --accent: #E6A15C;
-      --olive: #3D634E;
-      --sage: #A1C2AE;
-      --bg: #F5F2EB;
+      /* Borrowly Modern Glassmorphism System Tokens */
+      --primary: #0D9488;
+      --primary-dark: #0F766E;
+      --primary-light: #14B8A6;
+      --primary-subtle: rgba(13, 148, 136, 0.08);
+      --accent: #F59E0B;
+      --accent-hover: #D97706;
+      --bg: #FDFBF7;
+      --bg-dark: #0E1726;
       --surface: #FFFFFF;
-      --surface-warm: #EBE6DC;
-      --surface-subtle: #DDD6C8;
-      --text: #1C2420;
-      --text-muted: #708076;
-      --border: #D5CDBE;
-      --border-subtle: #E4DDD0;
+      --surface-glass: rgba(255, 255, 255, 0.78);
+      --surface-warm: #F4EFE6;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --border-teal: rgba(13, 148, 136, 0.25);
+      --radius-sm: 10px;
+      --radius-md: 16px;
       --radius-lg: 24px;
       --radius-pill: 9999px;
-      --shadow-sm: 0 4px 16px rgba(46, 90, 68, 0.08);
-      --shadow-md: 0 20px 40px rgba(28, 36, 32, 0.08);
-      --shadow-phone: 0 30px 60px -12px rgba(28, 36, 32, 0.25), 0 0 0 1px rgba(213, 205, 190, 0.6);
+      --shadow-sm: 0 4px 16px rgba(13, 148, 136, 0.06);
+      --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.08);
+      --shadow-lg: 0 30px 60px -12px rgba(13, 148, 136, 0.22);
     }
 
     * {
@@ -56,418 +61,524 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Ambient Warm Floating Glows */
-    .glow-ambient {
+    /* Ambient Background Glow Orbs */
+    .ambient-glow {
       position: fixed;
       border-radius: 50%;
-      filter: blur(90px);
+      filter: blur(100px);
       z-index: -1;
-      opacity: 0.45;
-      animation: floatAmbient 16s ease-in-out infinite alternate;
+      opacity: 0.5;
+      animation: floatOrb 18s ease-in-out infinite alternate;
     }
 
-    .glow-1 {
-      top: -120px;
+    .glow-teal {
+      top: -140px;
       left: -100px;
-      width: 550px;
-      height: 550px;
-      background: radial-gradient(circle, rgba(194, 139, 44, 0.25) 0%, rgba(250, 248, 244, 0) 70%);
-    }
-
-    .glow-2 {
-      bottom: -150px;
-      right: -100px;
       width: 600px;
       height: 600px;
-      background: radial-gradient(circle, rgba(153, 116, 74, 0.2) 0%, rgba(250, 248, 244, 0) 70%);
-      animation-delay: -8s;
+      background: radial-gradient(circle, rgba(13, 148, 136, 0.25) 0%, rgba(253, 251, 247, 0) 70%);
     }
 
-    @keyframes floatAmbient {
+    .glow-amber {
+      bottom: -150px;
+      right: -120px;
+      width: 650px;
+      height: 650px;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.2) 0%, rgba(253, 251, 247, 0) 70%);
+      animation-delay: -9s;
+    }
+
+    @keyframes floatOrb {
       0% { transform: translate(0, 0) scale(1); }
-      50% { transform: translate(30px, -40px) scale(1.08); }
-      100% { transform: translate(-20px, 30px) scale(0.95); }
+      50% { transform: translate(40px, -50px) scale(1.08); }
+      100% { transform: translate(-30px, 35px) scale(0.95); }
     }
 
-    /* Sticky Navigation Header */
+    /* Glass Navigation Header */
     header {
       padding: 18px 8%;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(250, 248, 244, 0.88);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(253, 251, 247, 0.82);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border-teal);
       position: sticky;
       top: 0;
       z-index: 100;
-      border-bottom: 1px solid var(--border);
-      animation: fadeInDown 0.7s ease-out;
+      transition: all 0.3s ease;
     }
 
-    .brand {
+    .brand-logo {
       display: flex;
       align-items: center;
       gap: 12px;
       text-decoration: none;
-      color: var(--text);
     }
 
     .brand-icon {
-      width: 42px;
-      height: 42px;
-      background: transparent;
-      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 8px 18px rgba(13, 148, 136, 0.3);
       transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .brand-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      border-radius: 12px;
-    }
-
-    .brand:hover .brand-icon {
-      transform: rotate(-6deg) scale(1.08);
+    .brand-logo:hover .brand-icon {
+      transform: scale(1.08) rotate(-4deg);
     }
 
     .brand-title {
-      font-size: 25px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: -0.5px;
       color: var(--text);
     }
 
-    .btn-header {
-      background: var(--primary);
-      color: white;
-      padding: 10px 24px;
-      border-radius: var(--radius-pill);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 15px;
-      transition: all 0.25s ease;
-      box-shadow: 0 4px 14px rgba(153, 116, 74, 0.25);
-    }
-
-    .btn-header:hover {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(153, 116, 74, 0.35);
-    }
-
-    main {
-      flex: 1;
-      padding: 40px 8% 80px;
-      max-width: 1240px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    /* Hero Layout Grid */
-    .hero-grid {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 50px;
-      align-items: center;
-      padding: 40px 0 70px;
-    }
-
-    .hero-content {
-      animation: fadeInUp 0.8s ease-out;
-    }
-
-    .badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface-warm);
-      color: var(--primary-dark);
-      padding: 8px 18px;
-      border-radius: var(--radius-pill);
-      font-weight: 700;
-      font-size: 13.5px;
-      margin-bottom: 24px;
-      border: 1px solid var(--border);
-      animation: pulseBadge 3s infinite alternate;
-    }
-
-    @keyframes pulseBadge {
-      0% { border-color: var(--border); }
-      100% { border-color: var(--primary); box-shadow: 0 0 16px rgba(153, 116, 74, 0.2); }
-    }
-
-    .hero-title {
-      font-size: 52px;
-      font-weight: 800;
-      line-height: 1.14;
-      letter-spacing: -1.8px;
-      color: var(--text);
-      margin-bottom: 22px;
-    }
-
-    .hero-title span {
+    .brand-title span {
       color: var(--primary);
     }
 
-    .hero-subtitle {
-      font-size: 19.5px;
-      color: var(--olive);
-      margin-bottom: 36px;
-      font-weight: 400;
-      line-height: 1.6;
-    }
-
-    .cta-group {
+    .nav-links {
       display: flex;
-      gap: 16px;
       align-items: center;
-      flex-wrap: wrap;
+      gap: 28px;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      padding: 16px 36px;
+    .nav-link {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 15px;
+      transition: color 0.2s ease;
+    }
+
+    .nav-link:hover {
+      color: var(--primary);
+    }
+
+    .btn-download-nav {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #ffffff;
+      padding: 10px 22px;
       border-radius: var(--radius-pill);
       text-decoration: none;
       font-weight: 700;
-      font-size: 17px;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      box-shadow: 0 12px 28px -6px rgba(153, 116, 74, 0.4);
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-dark);
-      transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 18px 34px -6px rgba(153, 116, 74, 0.5);
-    }
-
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 16px 32px;
-      border-radius: var(--radius-pill);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 17px;
+      font-size: 14.5px;
+      box-shadow: 0 8px 20px rgba(13, 148, 136, 0.25);
       transition: all 0.25s ease;
     }
 
-    .btn-secondary:hover {
-      background: var(--surface-warm);
+    .btn-download-nav:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(13, 148, 136, 0.38);
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 0 6%;
+    }
+
+    /* Hero Section */
+    .hero-section {
+      padding: 60px 0 80px;
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--primary-subtle);
+      border: 1px solid var(--border-teal);
+      border-radius: var(--radius-pill);
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 13.5px;
+      margin-bottom: 24px;
+      animation: fadeInDown 0.6s ease;
+    }
+
+    .hero-title {
+      font-size: 56px;
+      font-weight: 900;
+      line-height: 1.12;
+      letter-spacing: -1.5px;
+      margin-bottom: 22px;
+      color: var(--text);
+    }
+
+    .hero-title span {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 19px;
+      color: var(--text-muted);
+      margin-bottom: 36px;
+      max-width: 540px;
+      line-height: 1.6;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 40px;
+    }
+
+    .btn-hero-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #ffffff;
+      padding: 16px 34px;
+      border-radius: var(--radius-pill);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 16.5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s ease;
+    }
+
+    .btn-hero-primary:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 20px 40px rgba(13, 148, 136, 0.4);
+    }
+
+    .btn-hero-secondary {
+      background: var(--surface-glass);
+      color: var(--text);
+      padding: 16px 28px;
+      border-radius: var(--radius-pill);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 16px;
+      border: 1px solid var(--border-teal);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      backdrop-filter: blur(10px);
+      transition: all 0.25s ease;
+    }
+
+    .btn-hero-secondary:hover {
+      background: var(--surface);
+      border-color: var(--primary);
       transform: translateY(-2px);
     }
 
-    /* Animated Phone Mockup Frame */
-    .mockup-wrapper {
+    .trust-pills {
       display: flex;
-      justify-content: center;
       align-items: center;
-      position: relative;
-      animation: floatPhone 6s ease-in-out infinite alternate;
+      gap: 20px;
+      flex-wrap: wrap;
     }
 
-    @keyframes floatPhone {
-      0% { transform: translateY(0px) rotate(0deg); }
-      100% { transform: translateY(-16px) rotate(1.2deg); }
+    .trust-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .trust-icon {
+      color: var(--primary);
+      font-size: 16px;
+    }
+
+    /* Smartphone Frame & Live Floating Cards */
+    .mockup-container {
+      position: relative;
+      display: flex;
+      justify-content: center;
     }
 
     .phone-frame {
-      width: 325px;
-      height: 640px;
-      background: var(--text);
+      width: 310px;
+      height: 620px;
+      background: var(--bg-dark);
       border-radius: 46px;
-      padding: 12px;
-      box-shadow: var(--shadow-phone);
+      border: 10px solid #1E293B;
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.1);
       position: relative;
-    }
-
-    .phone-screen {
-      background: var(--bg);
-      width: 100%;
-      height: 100%;
-      border-radius: 36px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }
 
-    /* Screen Top Bar */
-    .phone-top-bar {
-      background: var(--surface-warm);
-      padding: 16px 18px 12px;
+    /* Dynamic Floating App UI Elements */
+    .phone-header {
+      padding: 20px 18px 12px;
+      background: rgba(14, 23, 38, 0.95);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      color: #FFFFFF;
+    }
+
+    .phone-brand {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid var(--border);
     }
 
-    .phone-screen-body {
-      padding: 16px;
+    .phone-brand-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #FFFFFF;
+    }
+
+    .phone-brand-title span {
+      color: var(--primary-light);
+    }
+
+    .phone-feed {
       flex: 1;
+      padding: 14px;
       overflow-y: auto;
-    }
-
-    /* Interactive Radius Chips in Phone */
-    .radius-chips {
       display: flex;
-      gap: 6px;
-      margin-bottom: 16px;
+      flex-direction: column;
+      gap: 12px;
+      background: #0B1120;
     }
 
-    .radius-chip {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: var(--radius-pill);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--olive);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .radius-chip.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-      box-shadow: 0 4px 12px rgba(153, 116, 74, 0.3);
-    }
-
-    /* App Item Card Inside Phone */
-    .phone-item-card {
-      background: var(--surface);
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 14px;
-      transition: transform 0.3s ease;
-    }
-
-    .phone-card-media {
-      height: 145px;
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    .phone-card {
+      background: #1E293B;
+      border-radius: 18px;
+      padding: 10px;
       display: flex;
+      gap: 12px;
       align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 42px;
-      position: relative;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.3s ease;
     }
 
-    .phone-card-distance {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      background: rgba(30, 33, 22, 0.65);
-      backdrop-filter: blur(6px);
-      color: white;
-      font-size: 10px;
+    .phone-card-img {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    .phone-card-info {
+      flex: 1;
+    }
+
+    .phone-card-title {
+      font-size: 13px;
       font-weight: 700;
-      padding: 4px 10px;
-      border-radius: var(--radius-pill);
+      color: #F8FAFC;
+      margin-bottom: 2px;
+    }
+
+    .phone-card-sub {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-bottom: 4px;
+    }
+
+    .phone-card-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: var(--primary-dark);
+      color: var(--primary-light);
+      font-size: 11px;
+      font-weight: 800;
     }
 
     .phone-card-price {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: var(--primary-dark);
-      color: white;
-      font-size: 11.5px;
+      font-size: 12.5px;
       font-weight: 800;
-      padding: 4px 12px;
-      border-radius: var(--radius-pill);
+      color: var(--accent);
     }
 
-    .phone-card-details {
-      padding: 14px;
-    }
-
-    /* Floating Badge Overlay */
-    .floating-tag {
+    /* Floating Badges outside phone */
+    .floating-badge {
       position: absolute;
-      bottom: 40px;
-      left: -24px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-teal);
+      border-radius: var(--radius-md);
       padding: 12px 18px;
-      border-radius: 18px;
-      box-shadow: var(--shadow-md);
       display: flex;
       align-items: center;
       gap: 12px;
-      animation: floatBadge 4s ease-in-out infinite alternate;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+      animation: floatBadge 6s ease-in-out infinite alternate;
+    }
+
+    .badge-1 {
+      top: 60px;
+      left: -40px;
+    }
+
+    .badge-2 {
+      bottom: 80px;
+      right: -30px;
+      animation-delay: -3s;
     }
 
     @keyframes floatBadge {
       0% { transform: translateY(0); }
-      100% { transform: translateY(-10px); }
+      100% { transform: translateY(-12px); }
     }
 
-    /* Dynamic Shared Deep Link Card */
-    .shared-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
+    /* Interactive Live Search Section */
+    .demo-section {
+      padding: 80px 0;
+      text-align: center;
+    }
+
+    .section-tag {
+      color: var(--primary);
+      font-weight: 800;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-size: 38px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+
+    .section-subtitle {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 40px;
+    }
+
+    .demo-card-container {
+      background: var(--surface-glass);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-teal);
       border-radius: var(--radius-lg);
-      padding: 32px;
-      margin: 20px auto 50px;
-      max-width: 620px;
+      padding: 36px;
       box-shadow: var(--shadow-md);
-      display: none;
-      text-align: left;
-      animation: fadeInUp 0.6s ease-out;
+      max-width: 900px;
+      margin: 0 auto;
     }
 
-    .shared-card-header {
+    .slider-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-width: 480px;
+      margin: 0 auto 36px;
+    }
+
+    .slider-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    .slider-header span {
+      color: var(--primary);
+    }
+
+    input[type=range] {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--surface-warm);
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .interactive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .item-card-demo {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: left;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+
+    .item-card-demo:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary-light);
+    }
+
+    .item-demo-img {
+      width: 100%;
+      height: 140px;
+      border-radius: 12px;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+
+    .item-demo-title {
+      font-size: 15px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .item-demo-distance {
+      font-size: 12.5px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .item-demo-price {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text);
     }
 
     /* Features Grid */
     .features-section {
-      padding-top: 40px;
-    }
-
-    .section-title {
-      text-align: center;
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: -1px;
-      color: var(--text);
-      margin-bottom: 10px;
-    }
-
-    .section-subtitle {
-      text-align: center;
-      color: var(--olive);
-      font-size: 18px;
-      margin-bottom: 50px;
+      padding: 60px 0 100px;
     }
 
     .features-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 26px;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 28px;
+      margin-top: 40px;
     }
 
     .feature-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--surface-glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-teal);
       border-radius: var(--radius-lg);
-      padding: 32px 28px;
+      padding: 32px 26px;
+      box-shadow: var(--shadow-sm);
       transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
@@ -478,256 +589,351 @@
     }
 
     .feature-icon {
-      width: 52px;
-      height: 52px;
+      width: 54px;
+      height: 54px;
       border-radius: 16px;
-      background: var(--surface-warm);
+      background: var(--primary-subtle);
       color: var(--primary);
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 26px;
       margin-bottom: 20px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-teal);
     }
 
     .feature-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--text);
+      font-size: 19px;
+      font-weight: 800;
       margin-bottom: 10px;
     }
 
     .feature-desc {
-      color: var(--olive);
-      font-size: 15.5px;
+      font-size: 14.5px;
+      color: var(--text-muted);
       line-height: 1.6;
     }
 
-    /* Keyframe Animations */
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(28px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes fadeInDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
+    /* Footer */
     footer {
+      padding: 40px 8%;
+      background: var(--bg-dark);
+      color: #94A3B8;
+      border-top: 1px solid rgba(255,255,255,0.08);
       text-align: center;
-      padding: 36px 8%;
-      border-top: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 15px;
-      background: var(--surface-warm);
     }
 
-    @media (max-width: 992px) {
-      .hero-grid {
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 16px;
+    }
+
+    .footer-link {
+      color: var(--primary-light);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .footer-link:hover {
+      color: #FFFFFF;
+    }
+
+    /* Deep Link Overlay Modal */
+    #sharedItemCard {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: var(--surface);
+      border: 2px solid var(--primary);
+      border-radius: var(--radius-lg);
+      padding: 30px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+      z-index: 1000;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+    }
+
+    @media (max-width: 900px) {
+      .hero-section {
         grid-template-columns: 1fr;
         text-align: center;
       }
-      .cta-group {
+      .hero-title {
+        font-size: 42px;
+      }
+      .hero-subtitle {
+        margin: 0 auto 30px;
+      }
+      .hero-actions {
         justify-content: center;
       }
-      .hero-title {
-        font-size: 40px;
+      .trust-pills {
+        justify-content: center;
       }
-      .mockup-wrapper {
-        margin-top: 30px;
+      .badge-1, .badge-2 {
+        display: none;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Ambient Warm Floating Glows -->
-  <div class="glow-ambient glow-1"></div>
-  <div class="glow-ambient glow-2"></div>
+  <!-- Ambient Glow Orbs -->
+  <div class="ambient-glow glow-teal"></div>
+  <div class="ambient-glow glow-amber"></div>
 
-  <!-- Header -->
+  <!-- Navigation Header -->
   <header>
-    <a href="#" class="brand">
+    <a href="#" class="brand-logo">
       <div class="brand-icon">
-        <img src="app_icon.png" alt="Borrowly Icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 11V7a4 4 0 0 0-8 0v4M5 9h14l1 12H4L5 9z"/>
+        </svg>
       </div>
-      <div class="brand-title">Borrowly</div>
+      <div class="brand-title">Borrow<span>ly</span></div>
     </a>
-    <a href="./Borrowly.apk" download="Borrowly.apk" class="btn-header">Get App</a>
+
+    <div class="nav-links">
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#demo" class="nav-link">Live Radar</a>
+      <a href="Borrowly.apk" download class="btn-download-nav">Get App (APK)</a>
+    </div>
   </header>
 
+  <!-- Main Content -->
   <main>
-    <!-- Dynamic Shared Item Banner (Active when URL has ?item= or ?owner=) -->
-    <div id="sharedItemCard" class="shared-card">
-      <div class="shared-card-header">
-        <span class="badge-pill" style="margin-bottom:0;">🔗 Shared Neighborhood Item</span>
-      </div>
-      <h2 id="sharedTitle" style="font-size:25px; font-weight:800; margin:12px 0 8px; color:var(--text);"></h2>
-      <p id="sharedDesc" style="color:var(--olive); font-size:16px; margin-bottom:24px;"></p>
-      <div style="display:flex; gap:14px;">
-        <button id="openAppBtn" class="btn-primary" style="flex:1; justify-content:center; padding:14px 20px; font-size:16px;">
-          Open in Borrowly App
-        </button>
-      </div>
-    </div>
-
-    <!-- Hero Section with Animated Mockup -->
-    <section class="hero-grid">
-      <div class="hero-content">
-        <div class="badge-pill">
-          <span>📍 Hyper-Local Neighbor Sharing</span>
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div>
+        <div class="hero-badge">
+          <span>🤝</span> Hyper-Local Peer-to-Peer Community Platform
         </div>
         <h1 class="hero-title">
-          Borrow & Share Anything in Your <span>Neighborhood</span>
+          Borrow Tools & Gear From <span>Real Neighbors</span> Nearby.
         </h1>
         <p class="hero-subtitle">
-          Why buy tools, camping equipment, or party supplies for one-time use? Borrow high-quality items directly from verified neighbors living nearby.
+          Why buy items you only use once? Borrow drill kits, ladders, pressure washers, and camping gear right in your neighborhood with zero in-app commission fees.
         </p>
 
-        <div class="cta-group" id="download">
-          <a href="./Borrowly.apk" download="Borrowly.apk" id="downloadApkBtn" class="btn-primary">
+        <div class="hero-actions">
+          <a href="Borrowly.apk" download class="btn-hero-primary">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="7 10 12 15 17 10"></polyline>
-              <line x1="12" y1="15" x2="12" y2="3"></line>
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
             </svg>
-            Download Android APK
+            Download Android App (.APK)
           </a>
-          <a href="#features" class="btn-secondary">How it Works</a>
+          <a href="#demo" class="btn-hero-secondary">
+            <span>📍</span> Explore Radar Demo
+          </a>
+        </div>
+
+        <div class="trust-pills">
+          <div class="trust-item">
+            <span class="trust-icon">✓</span> $0 Digital Payment Markup
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">✓</span> Physical Cash Settlement
+          </div>
+          <div class="trust-item">
+            <span class="trust-icon">✓</span> Real PostGIS Radius Search
+          </div>
         </div>
       </div>
 
-      <!-- Animated App Mockup -->
-      <div class="mockup-wrapper">
+      <!-- Smartphone Preview -->
+      <div class="mockup-container">
+        <div class="floating-badge badge-1">
+          <span style="font-size:22px">🤝</span>
+          <div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--text)">In-Person Handover</div>
+            <div style="font-size:11.5px; color:var(--primary); font-weight:700">Zero Commission Fees</div>
+          </div>
+        </div>
+
+        <div class="floating-badge badge-2">
+          <span style="font-size:22px">⚡</span>
+          <div>
+            <div style="font-size:13.5px; font-weight:800; color:var(--text)">Instant Hive Cache</div>
+            <div style="font-size:11.5px; color:var(--accent); font-weight:700">&lt; 5ms Startup Speed</div>
+          </div>
+        </div>
+
         <div class="phone-frame">
-          <div class="phone-screen">
-            <div class="phone-top-bar">
-              <span style="font-weight:800; font-size:16px; color:var(--primary);">Borrowly</span>
-              <span style="font-size:11px; font-weight:700; background:var(--surface-subtle); color:var(--primary-dark); padding:3px 10px; border-radius:12px;">📍 3.0 km</span>
+          <div class="phone-header">
+            <div class="phone-brand">
+              <div class="phone-brand-title">Borrow<span>ly</span></div>
+              <span style="font-size:11px; background:rgba(13,148,136,0.3); color:var(--primary-light); padding:2px 8px; border-radius:10px; font-weight:700">📍 1.2 km</span>
+            </div>
+          </div>
+
+          <div class="phone-feed">
+            <div class="phone-card">
+              <img src="https://images.unsplash.com/photo-1504148455328-c376907d081c?w=200" class="phone-card-img" alt="Drill">
+              <div class="phone-card-info">
+                <div class="phone-card-title">DeWalt Cordless Drill 20V</div>
+                <div class="phone-card-sub">Tools • 0.8 km away</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="phone-card-badge">Tools</span>
+                  <span class="phone-card-price">₹12/day</span>
+                </div>
+              </div>
             </div>
 
-            <div class="phone-screen-body">
-              <!-- Interactive Radius Selector Chips -->
-              <div class="radius-chips">
-                <div class="radius-chip" onclick="selectRadius(this, '1.0 km')">1km</div>
-                <div class="radius-chip active" onclick="selectRadius(this, '3.0 km')">3km</div>
-                <div class="radius-chip" onclick="selectRadius(this, '5.0 km')">5km</div>
-                <div class="radius-chip" onclick="selectRadius(this, '10.0 km')">10km</div>
-              </div>
-
-              <!-- Item Card 1 -->
-              <div class="phone-item-card">
-                <div class="phone-card-media">
-                  🛠️
-                  <span class="phone-card-distance" id="mockupDistanceBadge">📍 0.8 km away</span>
-                  <span class="phone-card-price">$10/day</span>
-                </div>
-                <div class="phone-card-details">
-                  <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:4px;">DeWalt Cordless Power Drill</div>
-                  <div style="font-size:11px; color:var(--olive);">Tools & Equipment • 4.9 ★</div>
+            <div class="phone-card">
+              <img src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=200" class="phone-card-img" alt="Tent">
+              <div class="phone-card-info">
+                <div class="phone-card-title">4-Person Camping Tent</div>
+                <div class="phone-card-sub">Outdoors • 1.2 km away</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="phone-card-badge" style="background:#0284C7; color:#7DD3FC">Outdoors</span>
+                  <span class="phone-card-price" style="color:#10B981">FREE 🎁</span>
                 </div>
               </div>
+            </div>
 
-              <!-- Item Card 2 -->
-              <div class="phone-item-card">
-                <div class="phone-card-media" style="background:linear-gradient(135deg, var(--olive), var(--primary)); height:110px;">
-                  ⛺
-                  <span class="phone-card-distance">📍 1.4 km away</span>
-                  <span class="phone-card-price" style="background:var(--primary-light); color:var(--text);">FREE 🎁</span>
-                </div>
-                <div class="phone-card-details">
-                  <div style="font-weight:700; font-size:14px; color:var(--text); margin-bottom:4px;">4-Person Waterproof Tent</div>
-                  <div style="font-size:11px; color:var(--olive);">Outdoors & Camping • 5.0 ★</div>
+            <div class="phone-card">
+              <img src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=200" class="phone-card-img" alt="Washer">
+              <div class="phone-card-info">
+                <div class="phone-card-title">Pressure Washer 2000 PSI</div>
+                <div class="phone-card-sub">Cleaning • 1.8 km away</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <span class="phone-card-badge" style="background:#D97706; color:#FDE68A">Cleaning</span>
+                  <span class="phone-card-price">₹18/day</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Floating Tag Badge -->
-        <div class="floating-tag">
-          <div style="width:38px; height:38px; border-radius:50%; background:var(--surface-warm); display:flex; align-items:center; justify-content:center; color:var(--primary); font-weight:800; font-size:18px; border:1px solid var(--border);">
-            🤝
+    <!-- Interactive Radius Radar Demo Section -->
+    <section id="demo" class="demo-section">
+      <div class="section-tag">Interactive Preview</div>
+      <h2 class="section-title">Test The Neighborhood Radius Radar</h2>
+      <p class="section-subtitle">Slide to filter active neighbor listings by maximum distance radius in real-time.</p>
+
+      <div class="demo-card-container">
+        <div class="slider-wrapper">
+          <div class="slider-header">
+            <div>Maximum Search Distance</div>
+            <div><span id="radiusValue">2.0</span> km</div>
           </div>
-          <div>
-            <div style="font-size:13px; font-weight:800; color:var(--text);">In-Person Handover</div>
-            <div style="font-size:11px; color:var(--olive);">$0 Digital Commission Fees</div>
-          </div>
+          <input type="range" id="radiusSlider" min="0.5" max="15.0" step="0.5" value="2.0">
+        </div>
+
+        <div class="interactive-grid" id="interactiveGrid">
+          <!-- Populated by JavaScript -->
         </div>
       </div>
     </section>
 
     <!-- Features Section -->
     <section id="features" class="features-section">
-      <h2 class="section-title">Designed For Community Sharing</h2>
-      <p class="section-subtitle">Simple, safe, and transparent peer-to-peer neighborhood borrowing.</p>
+      <div style="text-align:center;">
+        <div class="section-tag">Why Borrowly</div>
+        <h2 class="section-title">Built For Genuine Community Sharing</h2>
+        <p class="section-subtitle">Transparent, safe, and instant peer-to-peer neighborhood borrowing.</p>
+      </div>
 
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">🎯</div>
+          <div class="feature-icon">📍</div>
           <h3 class="feature-title">PostGIS Radius Search</h3>
-          <p class="feature-desc">Discover tools and items listed by neighbors within 1 km to 15 km of your physical location.</p>
+          <p class="feature-desc">Filter available items using PostgreSQL PostGIS queries from 0.5 km to 15 km of your physical location.</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon">💵</div>
-          <h3 class="feature-title">In-Person Settlement</h3>
-          <p class="feature-desc">Zero in-app commission fees or digital payment markups. Fees and deposits are settled in-person during handover.</p>
+          <h3 class="feature-title">Physical Cash Settlement</h3>
+          <p class="feature-desc">Zero in-app payment markups or hidden processing fees. Rental fees and deposits are settled in-person during handover.</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon">🎁</div>
           <h3 class="feature-title">Free Community Items</h3>
-          <p class="feature-desc">Borrow 100% free loan items shared by generous neighbors looking to help out the community.</p>
+          <p class="feature-desc">Discover 100% free loan listings shared by generous neighbors looking to contribute to the community.</p>
         </div>
 
         <div class="feature-card">
           <div class="feature-icon">💬</div>
-          <h3 class="feature-title">Direct Neighbor Chat</h3>
-          <p class="feature-desc">Coordinate pickup spots, return times, and cash deposits directly via real-time neighbor messaging.</p>
+          <h3 class="feature-title">Real-Time Neighbor Chat</h3>
+          <p class="feature-desc">Coordinate pickup locations, return dates, and security deposits directly through real-time neighbor messaging threads.</p>
         </div>
       </div>
     </section>
   </main>
 
+  <!-- Deep Link Shared Item Modal -->
+  <div id="sharedItemCard">
+    <h3 id="sharedTitle" style="font-size:20px; font-weight:800; margin-bottom:8px;">Shared Listing</h3>
+    <p id="sharedDesc" style="font-size:14px; color:var(--text-muted); margin-bottom:20px;">Open this listing directly in the Borrowly mobile app.</p>
+    <button id="openAppBtn" class="btn-hero-primary" style="width:100%; justify-content:center; cursor:pointer;">
+      Open in Borrowly App 🚀
+    </button>
+  </div>
+
   <!-- Footer -->
   <footer>
-    <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; max-width: 800px; margin: 0 auto;">
-      <div style="display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;">
-        <a href="terms.html" style="color: var(--primary); font-weight: 600; text-decoration: none; font-size: 14.5px;">Terms & Conditions</a>
-        <span style="color: var(--border);">•</span>
-        <a href="privacy.html" style="color: var(--primary); font-weight: 600; text-decoration: none; font-size: 14.5px;">Privacy Policy</a>
-      </div>
-      <p>© 2026 Borrowly • Built with authentic warm camel design system & Outfit typography.</p>
+    <div class="footer-links">
+      <a href="terms.html" class="footer-link">Terms & Conditions</a>
+      <span>•</span>
+      <a href="privacy.html" class="footer-link">Privacy Policy</a>
     </div>
+    <p>© 2026 Borrowly • Built with Flutter, Supabase & PostGIS Geospatial Engine.</p>
   </footer>
 
   <script>
-    // Interactive Radius Chips in Phone Mockup
-    function selectRadius(el, distanceText) {
-      document.querySelectorAll('.radius-chip').forEach(c => c.classList.remove('active'));
-      el.classList.add('active');
-      const distBadge = document.getElementById('mockupDistanceBadge');
-      if (distBadge) {
-        distBadge.innerText = '📍 ' + distanceText + ' away';
+    // Sample items for interactive radius radar demo
+    const sampleItems = [
+      { title: "DeWalt Cordless Drill 20V", category: "Tools", distance: 0.8, price: "₹12/day", img: "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400" },
+      { title: "4-Person Waterproof Tent", category: "Outdoors", distance: 1.2, price: "FREE 🎁", img: "https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400" },
+      { title: "Pressure Washer 2000 PSI", category: "Cleaning", distance: 1.8, price: "₹18/day", img: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400" },
+      { title: "Heavy Duty 12ft Ladder", category: "Tools", distance: 3.5, price: "FREE 🎁", img: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400" },
+      { title: "Electric Lawn Mower", category: "Gardening", distance: 5.2, price: "₹25/day", img: "https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?w=400" },
+      { title: "High-Pressure Steam Cleaner", category: "Cleaning", distance: 8.4, price: "₹15/day", img: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400" }
+    ];
+
+    const slider = document.getElementById('radiusSlider');
+    const radiusVal = document.getElementById('radiusValue');
+    const grid = document.getElementById('interactiveGrid');
+
+    function renderDemoItems(maxDist) {
+      grid.innerHTML = '';
+      const filtered = sampleItems.filter(item => item.distance <= maxDist);
+      if (filtered.length === 0) {
+        grid.innerHTML = '<div style="grid-column:1/-1; padding:30px; color:var(--text-muted); font-weight:600;">No items listed within ' + maxDist + ' km. Try expanding the slider radius!</div>';
+        return;
       }
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'item-card-demo';
+        card.innerHTML = `
+          <img src="${item.img}" class="item-demo-img" alt="${item.title}">
+          <div class="item-demo-title">${item.title}</div>
+          <div class="item-demo-distance">📍 ${item.distance} km away</div>
+          <div class="item-demo-price">${item.price}</div>
+        `;
+        grid.appendChild(card);
+      });
     }
 
-    // Deep Link & URL Parameter Handler
+    slider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value).toFixed(1);
+      radiusVal.innerText = val;
+      renderDemoItems(val);
+    });
+
+    // Initial render
+    renderDemoItems(2.0);
+
+    // Deep Link URL Parameter Handler
     const urlParams = new URLSearchParams(window.location.search);
     const itemId = urlParams.get('item');
     const ownerId = urlParams.get('owner');
@@ -741,12 +947,8 @@
       if (sharedCard) {
         sharedCard.style.display = 'block';
         document.getElementById('sharedTitle').innerText = itemId ? 'Shared Item #' + itemId.substring(0, 8) : 'Neighbor Profile';
-        document.getElementById('sharedDesc').innerText = 'Tap below to open this listing directly in the Borrowly mobile app or download the APK.';
         document.getElementById('openAppBtn').onclick = function() {
           window.location.href = targetScheme;
-          setTimeout(function() {
-            alert('If the app does not open, please download the Borrowly APK using the download button below.');
-          }, 1500);
         };
       }
     }

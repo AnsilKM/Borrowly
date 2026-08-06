@@ -19,11 +19,11 @@ import 'package:borrowly/core/widgets/borrowly_image_preview_modal.dart';
 import 'package:borrowly/core/widgets/borrowly_toast.dart';
 import 'package:borrowly/core/utils/avatar_provider_util.dart';
 import 'package:borrowly/features/auth/presentation/providers/auth_provider.dart';
-import 'package:borrowly/features/borrow/presentation/widgets/request_borrow_bottom_sheet.dart';
 import 'package:borrowly/features/item/domain/entities/item_entity.dart';
 import 'package:borrowly/features/item/domain/usecases/get_item_details_usecase.dart';
 import 'package:borrowly/features/item/presentation/providers/home_items_provider.dart';
 import 'package:borrowly/features/item/presentation/providers/wishlist_provider.dart';
+import 'package:borrowly/features/chat/presentation/providers/chat_provider.dart';
 import 'add_item_screen.dart';
 
 final getItemDetailsUseCaseProvider = Provider<GetItemDetailsUseCase>((ref) {
@@ -827,63 +827,55 @@ class _ItemDetailsScreenState extends ConsumerState<ItemDetailsScreen> {
                             );
                           }
 
-                          // Neighbor / Borrower Standard Glass Action Bar
-                          return Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
-                                child: BorrowlyButton(
-                                  label: 'Chat',
-                                  variant: BorrowlyButtonVariant.secondary,
-                                  icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                                  onPressed: () {
-                                    BorrowlyLogger.event('ItemDetails: Chat Button Tapped', parameters: {
-                                      'authStatus': authState.status.name,
-                                      'isAuthenticated': authState.isAuthenticated,
-                                      'userId': authState.user?.id ?? 'null',
-                                      'isGuest': authState.isGuest,
-                                    });
-                                    ref.read(authProvider.notifier).executeProtectedAction(
-                                      context,
-                                      actionTitle: 'Chat with ${item.ownerName}',
-                                      onAuthenticated: () {
-                                        BorrowlyLogger.info('✅ Chat: Auth passed, pushing chat screen');
+                          // Neighbor / Borrower Chat-First Action Button
+                          return SizedBox(
+                            width: double.infinity,
+                            child: BorrowlyButton(
+                              label: 'Chat with ${item.ownerName}',
+                              variant: BorrowlyButtonVariant.primary,
+                              icon: const Icon(Icons.chat_bubble_rounded, size: 20),
+                              onPressed: () {
+                                BorrowlyLogger.event('ItemDetails: Chat Button Tapped', parameters: {
+                                  'authStatus': authState.status.name,
+                                  'isAuthenticated': authState.isAuthenticated,
+                                  'userId': authState.user?.id ?? 'null',
+                                  'isGuest': authState.isGuest,
+                                });
+                                ref.read(authProvider.notifier).executeProtectedAction(
+                                  context,
+                                  actionTitle: 'Chat with ${item.ownerName}',
+                                  onAuthenticated: () async {
+                                    BorrowlyLogger.info('✅ Chat: Auth passed, resolving conversation...');
+                                    
+                                    try {
+                                      final chatRepo = ref.read(chatRepositoryProvider);
+                                      final currentUserId = ref.read(authProvider).user!.id;
+                                      
+                                      final conversation = await chatRepo.getOrCreateConversation(
+                                        itemId: item.id,
+                                        borrowerId: currentUserId,
+                                        ownerId: item.ownerId,
+                                        itemTitle: item.title,
+                                        itemImage: item.images.isNotEmpty ? item.images.first : '',
+                                      );
+                                      
+                                      BorrowlyLogger.info('✅ Chat: Conversation resolved → ${conversation.id}');
+                                      
+                                      if (context.mounted) {
                                         context.push(
-                                          '/chat/${item.id}?title=${Uri.encodeComponent(item.ownerName)}&item=${Uri.encodeComponent(item.title)}',
+                                          '/chat/${conversation.id}?title=${Uri.encodeComponent(item.ownerName)}&item=${Uri.encodeComponent(item.title)}',
                                         );
-                                      },
-                                    );
+                                      }
+                                    } catch (e) {
+                                      BorrowlyLogger.error('Failed to resolve chat conversation', e);
+                                      if (context.mounted) {
+                                        BorrowlyToast.show(context, 'Could not start chat. Please try again.');
+                                      }
+                                    }
                                   },
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                flex: 3,
-                                child: BorrowlyButton(
-                                  label: item.isAvailable ? 'Request to Borrow' : 'Currently Borrowed',
-                                  variant: item.isAvailable ? BorrowlyButtonVariant.primary : BorrowlyButtonVariant.outline,
-                                  onPressed: item.isAvailable
-                                      ? () {
-                                          BorrowlyLogger.event('ItemDetails: Borrow Button Tapped', parameters: {
-                                            'authStatus': authState.status.name,
-                                            'isAuthenticated': authState.isAuthenticated,
-                                            'userId': authState.user?.id ?? 'null',
-                                          });
-                                          ref.read(authProvider.notifier).executeProtectedAction(
-                                            context,
-                                            actionTitle: 'Borrow "${item.title}"',
-                                            onAuthenticated: () {
-                                              BorrowlyLogger.info('✅ Borrow: Auth passed, showing request sheet');
-                                              RequestBorrowBottomSheet.show(context, item: item);
-                                            },
-                                          );
-                                        }
-                                      : () {
-                                          BorrowlyToast.show(context, 'This item is currently out on loan with another neighbor');
-                                        },
-                                ),
-                              ),
-                            ],
+                                );
+                              },
+                            ),
                           );
                         },
                       ),

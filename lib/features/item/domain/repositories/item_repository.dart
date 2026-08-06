@@ -39,8 +39,8 @@ abstract class ItemRepository {
     ItemSortOption sortBy = ItemSortOption.nearest,
   });
 
-  /// Add new item listing to neighborhood marketplace
-  Future<ItemEntity> addItem(ItemEntity item);
+  /// Add new item listing to neighborhood marketplace with PostGIS coordinates
+  Future<ItemEntity> addItem(ItemEntity item, {double? lat, double? lng});
 
   /// Update existing item listing details in marketplace
   Future<ItemEntity> updateItem(ItemEntity item);

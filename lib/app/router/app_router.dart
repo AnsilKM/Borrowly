@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'package:borrowly/core/utils/borrowly_logger.dart';
 import 'package:borrowly/app/theme/app_colors.dart';
 import 'package:borrowly/app/theme/app_typography.dart';
-import 'package:borrowly/features/activity/presentation/activity_screen.dart';
 import 'package:borrowly/features/auth/presentation/screens/login_screen.dart';
 import 'package:borrowly/features/auth/presentation/screens/profile_setup_screen.dart';
 import 'package:borrowly/features/chat/presentation/screens/chat_screen.dart';
@@ -342,17 +341,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
       ),
-      GoRoute(
-        path: AppRoutes.myListings,
-        pageBuilder: (context, state) => _buildSlideTransitionPage(
-          context: context,
-          state: state,
-          child: const ProductListScreen(
-            title: 'My Listings',
-            isMyListings: true,
-          ),
-        ),
-      ),
+
       GoRoute(
         path: AppRoutes.productList,
         pageBuilder: (context, state) {
@@ -385,16 +374,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.activity,
-                builder: (context, state) => const ActivityScreen(),
+                path: AppRoutes.chatList,
+                builder: (context, state) => const ConversationListScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.chatList,
-                builder: (context, state) => const ConversationListScreen(),
+                path: AppRoutes.addItem,
+                builder: (context, state) => const AddItemScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.myListings,
+                builder: (context, state) => const ProductListScreen(
+                  title: 'My Listings',
+                  isMyListings: true,
+                ),
               ),
             ],
           ),
